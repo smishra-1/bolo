@@ -15,10 +15,13 @@ type AppState = {
   native: NativeLang;
   target: TargetLang | null;
   course: Course | null;
+  email: string | null;
+  displayName: string | null;
   m: Messages;
   setNative: (lang: NativeLang) => Promise<void>;
   setTarget: (lang: TargetLang) => Promise<void>;
   setLevel: (level: number) => Promise<void>;
+  setDisplayName: (name: string) => Promise<void>;
   refreshCourse: () => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -52,6 +55,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [native, setNativeState] = useState<NativeLang>("en");
   const [target, setTargetState] = useState<TargetLang | null>(null);
   const [course, setCourse] = useState<Course | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [displayName, setDisplayNameState] = useState<string | null>(null);
 
   const loadCourse = useCallback(async (uid: string, lang: TargetLang) => {
     const { data } = await getSupabaseBrowserClient()
@@ -82,6 +87,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!user) {
         loadedFor = null;
         setUserId(null);
+        setEmail(null);
+        setDisplayNameState(null);
         setTargetState(null);
         setCourse(null);
         setStatus("signedOut");
@@ -93,7 +100,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const { data: profile, error } = await supabase
         .from("profiles")
-        .select("native_lang, target_lang")
+        .select("native_lang, target_lang, display_name")
         .eq("id", user.id)
         .maybeSingle();
       if (error) throw error;
@@ -105,6 +112,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
 
       setUserId(user.id);
+      setEmail(user.email ?? null);
+      setDisplayNameState(profile?.display_name ?? null);
       const savedNative = isNativeLang(profile?.native_lang) ? profile.native_lang : guess;
       setNativeState(savedNative);
       rememberNative(savedNative);
@@ -195,6 +204,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [userId, target],
   );
 
+  const setDisplayName = useCallback(
+    async (name: string) => {
+      if (!userId) throw new Error("Not signed in");
+      const clean = name.trim().slice(0, 40) || null;
+      const { error } = await getSupabaseBrowserClient()
+        .from("profiles")
+        .update({ display_name: clean, updated_at: new Date().toISOString() })
+        .eq("id", userId);
+      if (error) throw error;
+      setDisplayNameState(clean);
+    },
+    [userId],
+  );
+
   const refreshCourse = useCallback(async () => {
     if (userId && target) await loadCourse(userId, target);
   }, [userId, target, loadCourse]);
@@ -205,8 +228,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AppState>(
-    () => ({ status, native, target, course, m: getMessages(native), setNative, setTarget, setLevel, refreshCourse, signOut }),
-    [status, native, target, course, setNative, setTarget, setLevel, refreshCourse, signOut],
+    () => ({
+      status,
+      native,
+      target,
+      course,
+      email,
+      displayName,
+      m: getMessages(native),
+      setNative,
+      setTarget,
+      setLevel,
+      setDisplayName,
+      refreshCourse,
+      signOut,
+    }),
+    [status, native, target, course, email, displayName, setNative, setTarget, setLevel, setDisplayName, refreshCourse, signOut],
   );
 
   return <AppContext value={value}>{children}</AppContext>;

@@ -88,8 +88,9 @@ export function SayStepView({ step, target, m, onDone }: { step: SayStep; target
           <ol className="flex flex-wrap justify-center gap-1.5" lang={target}>
             {result.letters.map((letter, i) => (
               <li
-                key={i}
-                className={`grid size-10 place-items-center rounded-lg border-2 border-ink font-display text-xl font-bold ${letter.ok ? "bg-yay-soft" : "bg-oops-soft"}`}
+                key={`${heard}-${i}`}
+                className={`grid size-10 animate-star place-items-center rounded-lg border-2 border-ink font-display text-xl font-bold ${letter.ok ? "bg-yay-soft" : "bg-oops-soft"}`}
+                style={{ animationDelay: `${i * 60}ms` }}
               >
                 {letter.char}
               </li>

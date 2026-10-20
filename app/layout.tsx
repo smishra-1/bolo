@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Baloo_2, Nunito } from "next/font/google";
 import { AppProvider } from "@/components/app-provider";
+import { BackgroundDecor } from "@/components/background-decor";
+import { HelperWidget } from "@/components/helper-widget";
 import "./globals.css";
 
 const baloo = Baloo_2({
@@ -30,7 +32,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${baloo.variable} ${nunito.variable} h-full`}>
       <body className="min-h-full">
-        <AppProvider>{children}</AppProvider>
+        <BackgroundDecor />
+        <AppProvider>
+          {children}
+          <HelperWidget />
+        </AppProvider>
       </body>
     </html>
   );

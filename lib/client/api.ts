@@ -24,6 +24,28 @@ export async function postJson<T>(path: string, body: unknown, signal?: AbortSig
   return handle<T>(response);
 }
 
+/** Posts JSON and calls `onText` with the reply so far as a plain-text stream arrives. */
+export async function postJsonStream(path: string, body: unknown, onText: (text: string) => void, signal?: AbortSignal): Promise<string> {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!response.ok) return handle<never>(response);
+  if (!response.body) throw new ApiError("failed");
+  let text = "";
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    text += value;
+    onText(text);
+  }
+  if (!text.trim()) throw new ApiError("failed");
+  return text;
+}
+
 export async function transcribeAudio(audio: Blob, lang: string): Promise<string> {
   const form = new FormData();
   form.append("audio", audio, "speech");

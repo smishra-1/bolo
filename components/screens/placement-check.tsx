@@ -14,7 +14,7 @@ import {
 import type { NativeLang, TargetLang } from "@/lib/languages";
 import { useApp } from "../app-provider";
 import { Logo } from "../app-shell";
-import { Button, Card, Notice, ProgressBar } from "../ui";
+import { Button, Card, Confetti, Notice, ProgressBar } from "../ui";
 
 type Pending = { picked: number | null; question: PlacementQuestion };
 
@@ -86,7 +86,10 @@ function Check({ target, native, m, setLevel }: { target: TargetLang; native: Na
 
       {finished ? (
         <Card className="animate-pop flex flex-col items-center gap-4 p-8 text-center">
-          <span className="text-6xl" aria-hidden>🎉</span>
+          <span className="relative inline-block animate-tada text-6xl" aria-hidden>
+            🎉
+            <Confetti />
+          </span>
           <h1 className="font-display text-3xl font-bold">{m.check.doneTitle}</h1>
           <p className="text-lg">{fmt(m.check.doneBody, { level: levelName })}</p>
           <Button onClick={() => save(level)} disabled={saving}>
@@ -95,8 +98,8 @@ function Check({ target, native, m, setLevel }: { target: TargetLang; native: Na
           {failed && <Notice tone="error">{m.common.errorGeneric}</Notice>}
         </Card>
       ) : (
-        <section className="flex flex-col items-center gap-6 text-center" aria-live="polite">
-          <span className="text-7xl" aria-hidden>{question.emoji}</span>
+        <section key={question.conceptId} className="animate-slide-in flex flex-col items-center gap-6 text-center" aria-live="polite">
+          <span className="inline-block animate-float text-7xl" aria-hidden>{question.emoji}</span>
           <h1 className="font-display text-2xl font-semibold sm:text-3xl">
             {fmt(m.check.howDoYouSay, { word: question.prompt, lang: m.languages[target] })}
           </h1>

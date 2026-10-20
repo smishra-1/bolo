@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { errorMessage, postJson } from "@/lib/client/api";
 import { fmt, type Messages } from "@/lib/i18n";
 import type { NativeLang, TargetLang } from "@/lib/languages";
-import { Button } from "../ui";
+import { Button, Confetti } from "../ui";
 import type { StepOutcome } from "./steps";
 
 type Props = {
@@ -57,8 +57,9 @@ export function FeedbackSheet({ outcome, target, native, m, onNext }: Props) {
         aria-labelledby="feedback-title"
         className={`animate-pop w-full max-w-md overflow-hidden rounded-3xl border-4 bg-white shadow-chunky ${yay ? "border-yay" : "border-oops"}`}
       >
-        <div className={`flex flex-col items-center gap-1 py-4 ${yay ? "bg-yay-soft" : "bg-oops-soft"}`}>
-          <span className="text-5xl" aria-hidden>{yay ? "🎉" : "🤔"}</span>
+        <div className={`relative flex flex-col items-center gap-1 py-4 ${yay ? "bg-yay-soft" : "bg-oops-soft"}`}>
+          {yay && <Confetti />}
+          <span className={`inline-block text-5xl ${yay ? "animate-tada" : "animate-wiggle"}`} aria-hidden>{yay ? "🎉" : "🤔"}</span>
           <h2 id="feedback-title" className="font-display text-3xl font-bold">
             {yay ? m.lesson.yay : m.lesson.oops}
           </h2>

@@ -128,7 +128,7 @@ function Run({ steps, target, onFinish }: { steps: LessonStep[]; target: TargetL
       </header>
 
       <div className="grid flex-1 gap-6 md:grid-cols-[1fr_220px]">
-        <main className="chunky rounded-3xl bg-white p-5 sm:p-8">
+        <main key={index} className="chunky animate-slide-in rounded-3xl bg-white p-5 sm:p-8">
           {step.type === "match" && <MatchStepView key={index} step={step} {...props} />}
           {step.type === "choice" && <ChoiceStepView key={index} step={step} {...props} />}
           {step.type === "listen" && <ListenStepView key={index} step={step} {...props} />}
@@ -140,7 +140,7 @@ function Run({ steps, target, onFinish }: { steps: LessonStep[]; target: TargetL
           <aside aria-label={m.lesson.comingUp} className="hidden flex-col gap-3 md:flex">
             <p className="text-sm font-semibold text-muted">{m.lesson.comingUp}</p>
             {upcoming.map((s, i) => (
-              <div key={i} className="rounded-2xl border-2 border-dashed border-ink/50 p-4 text-muted">
+              <div key={index + i} className="animate-slide-in rounded-2xl border-2 border-dashed border-ink/50 p-4 text-muted" style={{ animationDelay: `${80 + i * 60}ms` }}>
                 <span aria-hidden>{STEP_ICON[s.type]} </span>
                 {stepTitle(s, m)}
               </div>

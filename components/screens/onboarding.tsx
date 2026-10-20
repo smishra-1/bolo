@@ -41,7 +41,7 @@ export function Onboarding() {
     <main className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-8 px-4 py-8">
       <header className="text-center">
         <p className="font-display text-5xl font-bold text-brand">
-          Bolo<span aria-hidden> 🦜</span>
+          Bolo<span aria-hidden className="inline-block animate-float"> 🦜</span>
         </p>
         <p className="mt-1 text-lg text-muted">{m.onboarding.tagline}</p>
       </header>
@@ -79,20 +79,20 @@ export function Onboarding() {
           {m.onboarding.learnTitle}
         </h2>
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {learnableFor(native).map((lang) => (
-            <li key={lang}>
+          {learnableFor(native).map((lang, i) => (
+            <li key={lang} className="animate-pop" style={{ animationDelay: `${100 + i * 70}ms` }}>
               <button
                 type="button"
                 disabled={!ready || busy !== null}
                 onClick={() => pick(lang)}
-                className={`chunky press flex w-full items-center gap-4 rounded-3xl p-5 text-left disabled:opacity-60 ${LANGS[lang].card}`}
+                className={`chunky press group flex w-full items-center gap-4 rounded-3xl p-5 text-left disabled:opacity-60 ${LANGS[lang].card}`}
               >
-                <span className="font-display text-4xl font-bold">{LANGS[lang].badge}</span>
+                <span className="inline-block font-display text-4xl font-bold group-hover:animate-wiggle">{LANGS[lang].badge}</span>
                 <span className="flex flex-col">
                   <span className="font-display text-2xl font-semibold">{m.languages[lang]}</span>
                   <span className="text-muted">{busy === lang ? m.common.loading : LANGS[lang].greeting}</span>
                 </span>
-                {target === lang && <span className="ml-auto text-2xl" aria-hidden>✅</span>}
+                {target === lang && <span className="ml-auto inline-block animate-star text-2xl" aria-hidden>✅</span>}
               </button>
             </li>
           ))}

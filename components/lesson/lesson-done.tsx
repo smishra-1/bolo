@@ -8,7 +8,7 @@ import { nextUnit, pointsFor, starsFor } from "@/lib/progress";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { UnitId } from "@/lib/units";
 import { useApp } from "../app-provider";
-import { Button, ButtonLink, Card, Mascot, Notice } from "../ui";
+import { Button, ButtonLink, Card, Confetti, Mascot, Notice } from "../ui";
 
 type Saved = { stars: number; points: number; new_words: number };
 
@@ -51,12 +51,15 @@ export function LessonDone({ unitId, content, correct, total, onAgain }: Props) 
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col items-center gap-6 px-4 py-10 text-center">
-      <span className="text-7xl" aria-hidden>🎉</span>
+      <span className="relative inline-block animate-tada text-7xl" aria-hidden>
+        🎉
+        <Confetti pieces={36} />
+      </span>
       <h1 className="font-display text-4xl font-bold">{m.done.title}</h1>
 
       <p role="img" aria-label={fmt(m.map.stars, { n: stars })} className="flex gap-4 text-6xl">
         {[0, 1, 2].map((i) => (
-          <span key={i} aria-hidden className={`animate-pop ${i < stars ? "" : "opacity-20 grayscale"}`} style={{ animationDelay: `${i * 150}ms` }}>
+          <span key={i} aria-hidden className={`inline-block animate-star ${i < stars ? "" : "opacity-20 grayscale"}`} style={{ animationDelay: `${300 + i * 200}ms` }}>
             ⭐
           </span>
         ))}
@@ -67,8 +70,8 @@ export function LessonDone({ unitId, content, correct, total, onAgain }: Props) 
           { icon: "🏅", value: `+${points}`, label: m.done.points },
           { icon: "🔥", value: streak, label: m.done.streak },
           { icon: "📖", value: saved?.new_words ?? "…", label: m.done.newWords },
-        ].map((stat) => (
-          <Card key={stat.label} className="flex flex-col items-center p-3">
+        ].map((stat, i) => (
+          <Card key={stat.label} className="animate-pop flex flex-col items-center p-3" style={{ animationDelay: `${900 + i * 100}ms` }}>
             <dt className="order-2 text-xs text-muted">{stat.label}</dt>
             <dd className="order-1 font-display text-2xl font-bold">
               <span aria-hidden>{stat.icon} </span>
@@ -81,8 +84,8 @@ export function LessonDone({ unitId, content, correct, total, onAgain }: Props) 
       {!saved && !failed && <p className="text-muted" role="status">{m.done.saving}</p>}
       {failed && <Notice tone="error">{m.done.saveError}</Notice>}
 
-      <div className="flex w-full items-center gap-3 rounded-3xl border-2 border-ink bg-sun-soft p-4 text-left">
-        <Mascot />
+      <div className="animate-pop flex w-full items-center gap-3 rounded-3xl border-2 border-ink bg-sun-soft p-4 text-left" style={{ animationDelay: "1200ms" }}>
+        <Mascot className="animate-float" />
         <p className="font-semibold">
           {fmt(m.done.buddyGreat, { unit: content.title })}{" "}
           {next ? fmt(m.done.buddyNext, { unit: m.units[next] }) : m.done.buddyAll}

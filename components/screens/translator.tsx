@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRecorder } from "@/hooks/use-recorder";
 import { errorMessage, postJson, transcribeAudio } from "@/lib/client/api";
 import { speak } from "@/lib/client/speech";
@@ -22,6 +22,22 @@ export function Translator() {
   const [result, setResult] = useState<Result | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
+  async function copy(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+    } catch (e) {
+      console.error("Copy failed", e);
+    }
+  }
 
   const recorder = useRecorder(async (clip) => {
     setError(null);
@@ -33,8 +49,8 @@ export function Translator() {
     }
   });
 
-  async function translate(event: FormEvent) {
-    event.preventDefault();
+  async function translate(event?: FormEvent) {
+    event?.preventDefault();
     if (!text.trim() || busy) return;
     setBusy(true);
     setError(null);
@@ -98,10 +114,17 @@ export function Translator() {
               value={text}
               maxLength={MAX_LENGTH}
               onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void translate();
+              }}
               placeholder={m.translate.placeholder}
               rows={4}
-              className="chunky w-full resize-none rounded-3xl bg-white p-4 pr-16 text-lg outline-none focus-visible:ring-3 focus-visible:ring-brand"
+              aria-keyshortcuts="Control+Enter Meta+Enter"
+              className="chunky w-full resize-none rounded-3xl bg-white p-4 pr-16 pb-8 text-lg outline-none focus-visible:ring-3 focus-visible:ring-brand"
             />
+            <span aria-hidden className={`absolute bottom-3 left-4 text-xs tabular-nums ${text.length >= MAX_LENGTH ? "text-oops" : "text-muted"}`}>
+              {text.length}/{MAX_LENGTH}
+            </span>
             <button
               type="button"
               onClick={recording ? recorder.stop : recorder.start}
@@ -125,9 +148,14 @@ export function Translator() {
             <p lang={to} className="font-display text-3xl font-semibold">{result.translation}</p>
             {result.romanization && <p className="text-muted">{result.romanization}</p>}
             {result.note && <p className="rounded-2xl border-2 border-dashed border-ink bg-sun-soft px-3 py-2 text-sm">💡 {result.note}</p>}
-            <Button variant="secondary" className="self-start" onClick={() => speak(result.translation, to)}>
-              🔊 {m.translate.listen}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={() => speak(result.translation, to)}>
+                <span aria-hidden>🔊</span> {m.translate.listen}
+              </Button>
+              <Button variant="secondary" onClick={() => copy(result.translation)}>
+                <span aria-hidden>{copied ? "✅" : "📋"}</span> <span aria-live="polite">{copied ? m.translate.copied : m.translate.copy}</span>
+              </Button>
+            </div>
           </Card>
         )}
       </main>

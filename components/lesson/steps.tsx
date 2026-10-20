@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useEffectEvent, useState, type ReactNode } from "react";
 import { fmt, type Messages } from "@/lib/i18n";
 import type { TargetLang } from "@/lib/languages";
 import type { ChoiceStep, FillStep, ListenStep, MatchStep } from "@/lib/lesson";
@@ -49,15 +49,49 @@ function StepFrame({ title, help, hint, hintLabel, children, footer }: FrameProp
   );
 }
 
-function OptionButton({ selected, onClick, children, tone }: { selected: boolean; onClick: () => void; children: ReactNode; tone?: "yay" | "oops" }) {
-  const bg = tone === "yay" ? "bg-yay-soft" : tone === "oops" ? "bg-oops-soft" : selected ? "bg-sky-100" : "bg-white";
+/**
+ * Lets keyboard players pick option N with the number keys and press Enter to check.
+ * Ignored while the feedback dialog is open or while typing in a field.
+ */
+function useStepKeys(count: number, onPick: (index: number) => void, onCheck: () => void) {
+  const onKey = useEffectEvent((event: KeyboardEvent) => {
+    if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (document.querySelector('[role="dialog"]')) return;
+    const el = event.target as HTMLElement;
+    if (el.closest("input, textarea, select")) return;
+    const n = Number(event.key);
+    if (Number.isInteger(n) && n >= 1 && n <= count) {
+      event.preventDefault();
+      onPick(n - 1);
+    } else if (event.key === "Enter" && !el.closest("button, a")) {
+      event.preventDefault();
+      onCheck();
+    }
+  });
+  useEffect(() => {
+    const listener = (event: KeyboardEvent) => onKey(event);
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
+  }, []);
+}
+
+type OptionProps = { selected: boolean; onClick: () => void; children: ReactNode; tone?: "yay" | "oops"; shortcut?: number };
+
+function OptionButton({ selected, onClick, children, tone, shortcut }: OptionProps) {
+  const bg = tone === "yay" ? "bg-yay-soft" : tone === "oops" ? "bg-oops-soft animate-shake" : selected ? "bg-sky-100" : "bg-white hover:bg-sky-50";
   return (
     <button
       type="button"
       aria-pressed={selected}
+      aria-keyshortcuts={shortcut ? String(shortcut) : undefined}
       onClick={onClick}
-      className={`chunky press flex min-h-14 flex-col items-center justify-center rounded-2xl px-4 py-2 font-display text-xl font-semibold ${bg} ${selected ? "ring-3 ring-brand ring-offset-2" : ""}`}
+      className={`chunky press relative flex min-h-14 w-full flex-col items-center justify-center rounded-2xl px-4 py-2 font-display text-xl font-semibold ${bg} ${selected ? "ring-3 ring-brand ring-offset-2" : ""}`}
     >
+      {shortcut && (
+        <span aria-hidden className="absolute top-1.5 left-2 hidden font-sans text-xs font-bold text-muted [@media(hover:hover)]:block">
+          {shortcut}
+        </span>
+      )}
       {children}
     </button>
   );
@@ -144,42 +178,36 @@ function CheckButton({ disabled, onClick, m }: { disabled: boolean; onClick: () 
 export function ChoiceStepView({ step, target, m, onDone }: StepProps<ChoiceStep>) {
   const [picked, setPicked] = useState<string | null>(null);
   const question = `${fmt(m.lesson.choiceHelp, { lang: m.languages[target] })} ${quote(step.meaning)}`;
+  const pick = (option: string) => {
+    setPicked(option);
+    speak(option, target);
+  };
+  const check = () => {
+    if (!picked) return;
+    onDone({
+      correct: picked === step.answer,
+      question,
+      correctAnswer: step.answer,
+      learnerAnswer: picked,
+      lines: [`${quote(step.answer)} ${fmt(m.lesson.means, { meaning: step.meaning })}`],
+    });
+  };
+  useStepKeys(step.options.length, (i) => pick(step.options[i]), check);
   return (
     <StepFrame
       title={m.lesson.choiceTitle}
       help={fmt(m.lesson.choiceHelp, { lang: m.languages[target] })}
       hint={m.lesson.choiceHint}
       hintLabel={m.lesson.hint}
-      footer={
-        <CheckButton
-          m={m}
-          disabled={!picked}
-          onClick={() =>
-            onDone({
-              correct: picked === step.answer,
-              question,
-              correctAnswer: step.answer,
-              learnerAnswer: picked,
-              lines: [`${quote(step.answer)} ${fmt(m.lesson.means, { meaning: step.meaning })}`],
-            })
-          }
-        />
-      }
+      footer={<CheckButton m={m} disabled={!picked} onClick={check} />}
     >
       <div className="flex flex-col items-center gap-2">
         <span className="text-7xl" aria-hidden>{step.emoji}</span>
         <p className="font-display text-2xl font-semibold">{quote(step.meaning)}</p>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {step.options.map((option) => (
-          <OptionButton
-            key={option}
-            selected={picked === option}
-            onClick={() => {
-              setPicked(option);
-              speak(option, target);
-            }}
-          >
+        {step.options.map((option, i) => (
+          <OptionButton key={option} shortcut={i + 1} selected={picked === option} onClick={() => pick(option)}>
             {option}
           </OptionButton>
         ))}
@@ -190,6 +218,17 @@ export function ChoiceStepView({ step, target, m, onDone }: StepProps<ChoiceStep
 
 export function ListenStepView({ step, target, m, onDone }: StepProps<ListenStep>) {
   const [picked, setPicked] = useState<string | null>(null);
+  const check = () => {
+    if (!picked) return;
+    onDone({
+      correct: picked === step.answer,
+      question: `${m.lesson.listenTitle}: ${quote(step.word)}`,
+      correctAnswer: step.answer,
+      learnerAnswer: picked,
+      lines: [`${quote(step.word)} ${fmt(m.lesson.means, { meaning: step.answer })}`],
+    });
+  };
+  useStepKeys(step.options.length, (i) => setPicked(step.options[i].meaning), check);
 
   useEffect(() => {
     speak(step.word, target);
@@ -200,28 +239,14 @@ export function ListenStepView({ step, target, m, onDone }: StepProps<ListenStep
       title={m.lesson.listenTitle}
       hint={m.lesson.listenHint}
       hintLabel={m.lesson.hint}
-      footer={
-        <CheckButton
-          m={m}
-          disabled={!picked}
-          onClick={() =>
-            onDone({
-              correct: picked === step.answer,
-              question: `${m.lesson.listenTitle}: ${quote(step.word)}`,
-              correctAnswer: step.answer,
-              learnerAnswer: picked,
-              lines: [`${quote(step.word)} ${fmt(m.lesson.means, { meaning: step.answer })}`],
-            })
-          }
-        />
-      }
+      footer={<CheckButton m={m} disabled={!picked} onClick={check} />}
     >
       <Button variant="secondary" className="self-center px-8 py-6 text-2xl" onClick={() => speak(step.word, target)}>
         <span aria-hidden>🔊</span> {m.lesson.tapToListen}
       </Button>
       <div className="grid grid-cols-3 gap-3">
-        {step.options.map((option) => (
-          <OptionButton key={option.meaning} selected={picked === option.meaning} onClick={() => setPicked(option.meaning)}>
+        {step.options.map((option, i) => (
+          <OptionButton key={option.meaning} shortcut={i + 1} selected={picked === option.meaning} onClick={() => setPicked(option.meaning)}>
             <span className="text-4xl" aria-hidden>{option.emoji}</span>
             <span className="text-base">{option.meaning}</span>
           </OptionButton>
@@ -234,27 +259,24 @@ export function ListenStepView({ step, target, m, onDone }: StepProps<ListenStep
 export function FillStepView({ step, target, m, onDone }: StepProps<FillStep>) {
   const [picked, setPicked] = useState<string | null>(null);
   const full = `${step.before}${step.answer}${step.after}`;
+  const check = () => {
+    if (!picked) return;
+    speak(full, target);
+    onDone({
+      correct: picked === step.answer,
+      question: `${m.lesson.fillTitle}: ${step.before}___${step.after}`,
+      correctAnswer: step.answer,
+      learnerAnswer: picked,
+      lines: [`${quote(full)} ${fmt(m.lesson.means, { meaning: step.meaning })}`],
+    });
+  };
+  useStepKeys(step.options.length, (i) => setPicked(step.options[i]), check);
   return (
     <StepFrame
       title={m.lesson.fillTitle}
       hint={fmt(m.lesson.fillHint, { meaning: step.meaning })}
       hintLabel={m.lesson.hint}
-      footer={
-        <CheckButton
-          m={m}
-          disabled={!picked}
-          onClick={() => {
-            speak(full, target);
-            onDone({
-              correct: picked === step.answer,
-              question: `${m.lesson.fillTitle}: ${step.before}___${step.after}`,
-              correctAnswer: step.answer,
-              learnerAnswer: picked,
-              lines: [`${quote(full)} ${fmt(m.lesson.means, { meaning: step.meaning })}`],
-            });
-          }}
-        />
-      }
+      footer={<CheckButton m={m} disabled={!picked} onClick={check} />}
     >
       <p className="text-center font-display text-3xl leading-relaxed font-semibold">
         {step.before}
@@ -262,10 +284,12 @@ export function FillStepView({ step, target, m, onDone }: StepProps<FillStep>) {
         {step.after}
       </p>
       <div className="flex flex-wrap justify-center gap-3">
-        {step.options.map((option) => (
-          <OptionButton key={option} selected={picked === option} onClick={() => setPicked(option)}>
-            {option}
-          </OptionButton>
+        {step.options.map((option, i) => (
+          <div key={option} className="min-w-28">
+            <OptionButton shortcut={i + 1} selected={picked === option} onClick={() => setPicked(option)}>
+              {option}
+            </OptionButton>
+          </div>
         ))}
       </div>
     </StepFrame>
