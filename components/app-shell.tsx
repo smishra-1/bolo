@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useApp } from "./app-provider";
-import { Notice, Spinner } from "./ui";
+import { LogoImage, Notice, Spinner } from "./ui";
 
 /** Sends signed-out visitors to /login and shows a loading state until a language is picked. */
 export function CourseGate({ children }: { children: ReactNode }) {
@@ -27,8 +27,8 @@ export function CourseGate({ children }: { children: ReactNode }) {
 
 export function Logo() {
   return (
-    <Link href="/map" className="font-display text-2xl font-bold text-brand">
-      Bolo<span aria-hidden>🦜</span>
+    <Link href="/map" aria-label="Bolo home">
+      <LogoImage className="h-10" />
     </Link>
   );
 }

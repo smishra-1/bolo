@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { errorMessage, postJsonStream } from "@/lib/client/api";
 import { useApp } from "./app-provider";
-import { Mascot } from "./ui";
+import { Mascot, Parrot } from "./ui";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -115,7 +115,7 @@ function Helper({ aboveNav }: { aboveNav: boolean }) {
         title={m.helper.open}
         className={`chunky press animate-pop fixed right-4 z-20 flex size-14 items-center justify-center gap-2 rounded-full bg-sun text-3xl sm:w-auto sm:px-4 ${bottom}`}
       >
-        <span aria-hidden>🦜</span>
+        <Parrot className="size-10" />
         <span aria-hidden className="hidden font-display text-lg font-bold sm:inline">{m.helper.open}</span>
       </button>
     );

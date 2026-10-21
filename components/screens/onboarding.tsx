@@ -6,7 +6,7 @@ import { fmt } from "@/lib/i18n";
 import { LANGS, NATIVE_LANGS, learnableFor, type TargetLang } from "@/lib/languages";
 import { useApp } from "../app-provider";
 import { SignOutButton } from "../app-shell";
-import { ButtonLink, Notice, Spinner } from "../ui";
+import { ButtonLink, LogoImage, Notice, Spinner } from "../ui";
 
 const TEAM = "Shobhit, Vardaan, Reyansh & Gaurang";
 
@@ -40,9 +40,7 @@ export function Onboarding() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-8 px-4 py-8">
       <header className="text-center">
-        <p className="font-display text-5xl font-bold text-brand">
-          Bolo<span aria-hidden className="inline-block animate-float"> 🦜</span>
-        </p>
+        <LogoImage className="mx-auto h-24 animate-float" />
         <p className="mt-1 text-lg text-muted">{m.onboarding.tagline}</p>
       </header>
 

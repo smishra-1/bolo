@@ -2,13 +2,12 @@
 
 import { useState, type ComponentProps, type ReactNode } from "react";
 import { useApp } from "../app-provider";
+import { LogoImage } from "../ui";
 
 export function AuthCard({ title, children }: { title: string; children: ReactNode }) {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-4 py-10">
-      <p className="text-center font-display text-5xl font-bold text-brand">
-        Bolo<span aria-hidden className="inline-block animate-float"> 🦜</span>
-      </p>
+      <LogoImage className="mx-auto h-24 animate-float" />
       <section className="chunky animate-pop flex flex-col gap-5 rounded-3xl bg-white p-6" style={{ animationDelay: "80ms" }}>
         <h1 className="text-center font-display text-3xl font-bold">{title}</h1>
         {children}

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ComponentProps, CSSProperties, ReactNode } from "react";
 
@@ -72,12 +73,20 @@ export function Notice({ children, tone = "info" }: { children: ReactNode; tone?
   );
 }
 
+/** The Bolo parrot on its own (decorative). */
+export function Parrot({ className = "" }: { className?: string }) {
+  return <Image src="/bolo-mark.png" alt="" width={512} height={512} className={`object-contain ${className}`} />;
+}
+
+/** Full Bolo logo: parrot and wordmark. */
+export function LogoImage({ className = "" }: { className?: string }) {
+  return <Image src="/bolo-logo.png" alt="Bolo" width={1246} height={511} priority className={`w-auto ${className}`} />;
+}
+
 export function Spinner({ label }: { label: string }) {
   return (
     <div role="status" className="flex min-h-[60dvh] flex-col items-center justify-center gap-3 py-12 text-muted">
-      <span className="text-5xl motion-safe:animate-bounce" aria-hidden>
-        🦜
-      </span>
+      <Parrot className="size-16 motion-safe:animate-bounce" />
       <span className="font-display text-lg">{label}</span>
     </div>
   );
@@ -85,8 +94,8 @@ export function Spinner({ label }: { label: string }) {
 
 export function Mascot({ className = "" }: { className?: string }) {
   return (
-    <span aria-hidden className={`grid size-11 shrink-0 place-items-center rounded-full border-2 border-ink bg-sun text-2xl ${className}`}>
-      🦜
+    <span aria-hidden className={`grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-ink bg-white ${className}`}>
+      <Parrot className="size-full" />
     </span>
   );
 }

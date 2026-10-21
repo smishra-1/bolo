@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { LANGS, TARGET_LANGS } from "@/lib/languages";
 import { UNITS } from "@/lib/units";
-import { ButtonLink } from "./ui";
+import { ButtonLink, LogoImage, Parrot } from "./ui";
 
 const STEPS = [
   { emoji: "🌍", title: "Pick a language", body: "Spanish, French, German, Japanese or Hindi. Take a quick check so we start at the right level.", tint: "bg-sun-soft" },
@@ -63,7 +63,7 @@ function HeroPreview() {
           </p>
         </div>
       </div>
-      <span className="absolute -bottom-6 -left-4 animate-float text-6xl [animation-delay:600ms]">🦜</span>
+      <Parrot className="absolute -bottom-8 -left-6 size-24 animate-float [animation-delay:600ms]" />
     </div>
   );
 }
@@ -73,8 +73,8 @@ export function Landing() {
     <>
       <header className="sticky top-0 z-10 border-b-2 border-ink bg-white/75 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4">
-          <Link href="/" className="font-display text-2xl font-bold text-brand">
-            Bolo<span aria-hidden>🦜</span>
+          <Link href="/" aria-label="Bolo home">
+            <LogoImage className="h-10" />
           </Link>
           <nav aria-label="Main" className="flex items-center gap-2 font-display font-semibold sm:gap-5">
             <a href="#how" className="hidden hover:text-brand sm:inline">How it works</a>
@@ -173,7 +173,7 @@ export function Landing() {
 
         <section className="mx-auto max-w-4xl px-4 py-24">
           <div className="chunky relative overflow-hidden rounded-[2.5rem] bg-brand p-10 text-center text-white sm:p-16">
-            <span aria-hidden className="absolute -left-4 -top-6 text-8xl opacity-20">🦜</span>
+            <Parrot className="absolute -left-4 -top-6 size-24 opacity-20" />
             <h2 className="relative font-display text-4xl font-bold sm:text-5xl">Ready to say your first word?</h2>
             <p className="relative mx-auto mt-4 max-w-md text-xl text-white/90">Pick a language and be speaking in minutes.</p>
             <ButtonLink href="/start" variant="secondary" className="relative mt-8 min-h-14 px-8 text-xl">Start learning free →</ButtonLink>
@@ -182,7 +182,7 @@ export function Landing() {
       </main>
 
       <footer className="border-t-2 border-ink bg-white py-8 text-center text-sm text-muted">
-        <p className="font-display text-xl font-bold text-brand">Bolo<span aria-hidden>🦜</span></p>
+        <LogoImage className="mx-auto h-10" />
         <p className="mt-1">Made with ❤️ by Shobhit, Vardaan, Reyansh &amp; Gaurang</p>
       </footer>
     </>
