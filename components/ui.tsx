@@ -94,7 +94,7 @@ export function Spinner({ label }: { label: string }) {
 
 export function Mascot({ className = "" }: { className?: string }) {
   return (
-    <span aria-hidden className={`grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-ink bg-white ${className}`}>
+    <span aria-hidden className={`grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-ink bg-sun p-1 ${className}`}>
       <Parrot className="size-full" />
     </span>
   );
