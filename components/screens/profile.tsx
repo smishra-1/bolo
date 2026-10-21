@@ -104,7 +104,7 @@ function ProfileView({ target }: { target: TargetLang }) {
             <p className="font-display text-2xl font-semibold">{fmt(m.profile.learning, { lang: m.languages[target] })}</p>
             <p className="text-muted">{fmt(m.profile.level, { level: levelName })}</p>
           </div>
-          <Link href="/" className="text-sm font-semibold text-brand underline-offset-4 hover:underline">
+          <Link href="/start" className="text-sm font-semibold text-brand underline-offset-4 hover:underline">
             {m.map.changeLanguage}
           </Link>
         </Card>

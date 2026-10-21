@@ -10,7 +10,7 @@ describe("safeNext", () => {
 
   it("refuses anything that could leave the site", () => {
     for (const value of ["https://evil.example", "//evil.example", "/\\evil.example", "/x\\y", "javascript:alert(1)", "map", "/\nx", ""]) {
-      expect(safeNext(value), value).toBe("/");
+      expect(safeNext(value), value).toBe("/start");
     }
     expect(safeNext(null, "/map")).toBe("/map");
   });

@@ -6,7 +6,7 @@ export const MIN_PASSWORD_LENGTH = 8;
  * Only allows redirects to a path on this site, so a crafted `?next=` link
  * cannot send a learner to another website after signing in.
  */
-export function safeNext(value: string | null | undefined, fallback = "/"): string {
+export function safeNext(value: string | null | undefined, fallback = "/start"): string {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) return fallback;
   if (value.includes("\\") || [...value].some((c) => c.charCodeAt(0) < 0x20)) return fallback;
   return value;

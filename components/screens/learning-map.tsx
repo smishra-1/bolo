@@ -46,7 +46,7 @@ export function LearningMap() {
             <h1 id="map-title" className="font-display text-3xl font-bold">
               {m.languages[target]} <span className="text-lg text-muted">{LANGS[target].badge}</span> · {m.map.title}
             </h1>
-            <Link href="/" className="text-sm font-semibold text-brand underline-offset-4 hover:underline">
+            <Link href="/start" className="text-sm font-semibold text-brand underline-offset-4 hover:underline">
               {m.map.changeLanguage}
             </Link>
           </div>

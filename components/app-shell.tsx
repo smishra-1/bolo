@@ -16,7 +16,7 @@ export function CourseGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (signedOut) router.replace(`/login?next=${encodeURIComponent(pathname)}`);
-    else if (needsCourse) router.replace("/");
+    else if (needsCourse) router.replace("/start");
   }, [signedOut, needsCourse, pathname, router]);
 
   if (status === "unconfigured") return <div className="p-4"><Notice tone="error">{m.common.setupNeeded}</Notice></div>;
