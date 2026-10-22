@@ -18,6 +18,18 @@
 --   * The shared lesson cache (public.lessons) has no policies at all; only the
 --     server, using the secret key, can read or write it.
 
+-- The languages Bolo teaches (every one is also a language a learner can speak).
+-- Keep in sync with lib/languages.ts. To add a language later, replace this
+-- function; the constraints below follow it.
+create or replace function public.supported_langs()
+returns text[]
+language sql
+immutable
+set search_path = ''
+as $$
+  select array['en', 'es', 'fr', 'de', 'it', 'pt', 'nl', 'sv', 'pl', 'ru', 'el', 'tr', 'ja', 'ko', 'zh', 'vi', 'th', 'id', 'ar', 'sw', 'hi', 'bn', 'ta', 'te', 'mr', 'gu', 'pa', 'ur', 'kn', 'ml']::text[]
+$$;
+
 -- ---------------------------------------------------------------------------
 -- Profiles
 -- ---------------------------------------------------------------------------
@@ -25,9 +37,9 @@ create table public.profiles (
   id           uuid primary key references auth.users (id) on delete cascade,
   display_name text check (char_length(display_name) between 1 and 40),
   native_lang  text not null default 'en'
-               check (native_lang in ('en', 'hi', 'es', 'fr', 'de', 'ja')),
+               check (native_lang = any (public.supported_langs())),
   target_lang  text
-               check (target_lang in ('es', 'fr', 'de', 'ja', 'hi')),
+               check (target_lang = any (public.supported_langs())),
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now(),
   constraint profiles_langs_differ check (target_lang is null or target_lang <> native_lang)
@@ -48,7 +60,7 @@ create policy "profiles: update own" on public.profiles
 -- ---------------------------------------------------------------------------
 create table public.courses (
   user_id     uuid not null references auth.users (id) on delete cascade,
-  target_lang text not null check (target_lang in ('es', 'fr', 'de', 'ja', 'hi')),
+  target_lang text not null check (target_lang = any (public.supported_langs())),
   level       smallint not null default 1 check (level between 1 and 3),
   points      integer not null default 0 check (points >= 0),
   created_at  timestamptz not null default now(),
@@ -75,7 +87,7 @@ grant update (level) on public.courses to authenticated;
 -- ---------------------------------------------------------------------------
 create table public.unit_progress (
   user_id           uuid not null references auth.users (id) on delete cascade,
-  target_lang       text not null check (target_lang in ('es', 'fr', 'de', 'ja', 'hi')),
+  target_lang       text not null check (target_lang = any (public.supported_langs())),
   unit_id           text not null check (unit_id ~ '^[a-z_]{1,32}$'),
   stars             smallint not null default 0 check (stars between 0 and 3),
   completions       integer not null default 0 check (completions >= 0),
@@ -86,7 +98,7 @@ create table public.unit_progress (
 create table public.lesson_attempts (
   id          bigint generated always as identity primary key,
   user_id     uuid not null references auth.users (id) on delete cascade,
-  target_lang text not null check (target_lang in ('es', 'fr', 'de', 'ja', 'hi')),
+  target_lang text not null check (target_lang = any (public.supported_langs())),
   unit_id     text not null check (unit_id ~ '^[a-z_]{1,32}$'),
   correct     smallint not null check (correct >= 0),
   total       smallint not null check (total between 1 and 20),
@@ -101,7 +113,7 @@ create index lesson_attempts_user_created_idx
 
 create table public.learned_words (
   user_id       uuid not null references auth.users (id) on delete cascade,
-  target_lang   text not null check (target_lang in ('es', 'fr', 'de', 'ja', 'hi')),
+  target_lang   text not null check (target_lang = any (public.supported_langs())),
   word          text not null check (char_length(word) between 1 and 80),
   meaning       text not null check (char_length(meaning) between 1 and 120),
   unit_id       text not null check (unit_id ~ '^[a-z_]{1,32}$'),
@@ -128,8 +140,8 @@ revoke insert, update, delete on public.unit_progress, public.lesson_attempts, p
 -- ---------------------------------------------------------------------------
 create table public.lessons (
   id          bigint generated always as identity primary key,
-  target_lang text not null check (target_lang in ('es', 'fr', 'de', 'ja', 'hi')),
-  native_lang text not null check (native_lang in ('en', 'hi', 'es', 'fr', 'de', 'ja')),
+  target_lang text not null check (target_lang = any (public.supported_langs())),
+  native_lang text not null check (native_lang = any (public.supported_langs())),
   unit_id     text not null check (unit_id ~ '^[a-z_]{1,32}$'),
   level       smallint not null check (level between 1 and 3),
   content     jsonb not null,
@@ -248,7 +260,7 @@ begin
   if v_uid is null then
     raise exception 'not authenticated' using errcode = '42501';
   end if;
-  if p_target_lang not in ('es', 'fr', 'de', 'ja', 'hi') then
+  if p_target_lang <> all (public.supported_langs()) then
     raise exception 'invalid language' using errcode = '22023';
   end if;
   if p_unit_id !~ '^[a-z_]{1,32}$' then

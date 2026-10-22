@@ -1,4 +1,4 @@
-import { UNITS, type UnitId } from "./units";
+import { UNITS, tierStart, type UnitId } from "./units";
 
 // Keep in sync with public.complete_lesson in supabase/schema.sql.
 export function starsFor(correct: number, total: number): number {
@@ -18,10 +18,11 @@ export type StarsByUnit = Partial<Record<UnitId, number>>;
 
 /**
  * A unit is open when the one before it has at least one star. A higher
- * placement level opens that many units from the start.
+ * placement level opens every unit up to the start of its tier, so a learner
+ * who already knows the basics can begin further along.
  */
 export function isUnlocked(index: number, stars: StarsByUnit, level: number): boolean {
-  if (index < Math.max(1, level)) return true;
+  if (index <= tierStart(Math.max(1, level))) return true;
   const previous = UNITS[index - 1];
   return previous !== undefined && (stars[previous.id] ?? 0) > 0;
 }

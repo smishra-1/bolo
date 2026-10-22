@@ -5,7 +5,7 @@ import { UNITS } from "@/lib/units";
 import { ButtonLink, LogoImage, Parrot } from "./ui";
 
 const STEPS = [
-  { emoji: "🌍", title: "Pick a language", body: "Spanish, French, German, Japanese or Hindi. Take a quick check so we start at the right level.", tint: "bg-sun-soft" },
+  { emoji: "🌍", title: "Pick a language", body: "Choose from 30 languages, from Spanish and Japanese to Hindi, Tamil and Swahili. Take a quick check so we start at the right level.", tint: "bg-sun-soft" },
   { emoji: "🎤", title: "Play and speak", body: "Short lessons mix tapping, matching and saying words out loud, so speaking is never an afterthought.", tint: "bg-yay-soft" },
   { emoji: "🔥", title: "Build a streak", body: "Earn stars, climb the learning map and come back tomorrow. Five minutes a day adds up.", tint: "bg-oops-soft" },
 ];
@@ -160,7 +160,7 @@ export function Landing() {
         <section aria-labelledby="units-title" className="border-y-2 border-ink bg-sun-soft py-20">
           <div className="mx-auto max-w-6xl px-4 text-center">
             <Eyebrow>What you&apos;ll learn</Eyebrow>
-            <h2 id="units-title" className="font-display text-4xl font-bold sm:text-5xl">Start with the words you&apos;ll use every day</h2>
+            <h2 id="units-title" className="font-display text-4xl font-bold sm:text-5xl">24 units, from your first hello to talking about travel</h2>
             <ul className="mt-10 flex flex-wrap justify-center gap-3">
               {UNITS.map((unit, i) => (
                 <li key={unit.id} className={`rounded-full border-2 border-ink bg-white px-5 py-2.5 font-display text-xl font-semibold shadow-chunky-sm ${i % 2 ? "-rotate-1" : "rotate-1"}`}>

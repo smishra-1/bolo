@@ -28,20 +28,23 @@ describe("unlocking", () => {
   });
 
   it("opens more units for a higher placement level", () => {
-    expect(isUnlocked(2, {}, 3)).toBe(true);
-    expect(isUnlocked(3, {}, 3)).toBe(false);
+    expect(isUnlocked(8, {}, 2)).toBe(true);
+    expect(isUnlocked(9, {}, 2)).toBe(false);
+    expect(isUnlocked(16, {}, 3)).toBe(true);
+    expect(isUnlocked(17, {}, 3)).toBe(false);
   });
 
   it("picks the open unit with the fewest stars", () => {
     expect(todaysPick({}, 1)).toBe("hello");
     expect(todaysPick({ hello: 3 }, 1)).toBe("colors");
     expect(todaysPick({ hello: 2, colors: 1 }, 1)).toBe("animals");
-    expect(todaysPick({ hello: 3, colors: 3 }, 2)).toBe("animals");
+    expect(todaysPick({ hello: 3, colors: 3 }, 1)).toBe("animals");
   });
 
   it("finds the next unit", () => {
     expect(nextUnit("hello")).toBe("colors");
-    expect(nextUnit("numbers")).toBeUndefined();
+    expect(nextUnit("numbers")).toBe("body");
+    expect(nextUnit("travel")).toBeUndefined();
   });
 });
 

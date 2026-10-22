@@ -38,7 +38,7 @@ export function Onboarding() {
   if (status === "loading" || status === "signedOut") return <Spinner label={m.common.loading} />;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-8 px-4 py-8">
+    <main className="mx-auto flex min-h-dvh max-w-5xl flex-col gap-8 px-4 py-8">
       <header className="text-center">
         <LogoImage className="mx-auto h-24 animate-float" />
         <p className="mt-1 text-lg text-muted">{m.onboarding.tagline}</p>
@@ -76,7 +76,7 @@ export function Onboarding() {
         <h2 id="learn-title" className="mb-4 text-center font-display text-3xl font-bold">
           {m.onboarding.learnTitle}
         </h2>
-        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {learnableFor(native).map((lang, i) => (
             <li key={lang} className="animate-pop" style={{ animationDelay: `${100 + i * 70}ms` }}>
               <button

@@ -6,7 +6,7 @@ import { errorMessage, postJson } from "@/lib/client/api";
 import { fmt, type Messages } from "@/lib/i18n";
 import type { TargetLang } from "@/lib/languages";
 import { buildLessonSteps, type LessonContent, type LessonStep } from "@/lib/lesson";
-import type { UnitId } from "@/lib/units";
+import { getUnit, type UnitId } from "@/lib/units";
 import { useApp } from "../app-provider";
 import { Button, Notice, ProgressBar, Spinner } from "../ui";
 import { FeedbackSheet } from "./feedback-sheet";
@@ -36,7 +36,8 @@ export function LessonPlayer({ unitId }: { unitId: UnitId }) {
   const { target, native, course, m } = useApp();
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
   const [attempt, setAttempt] = useState(0);
-  const level = course?.level ?? 1;
+  // A later unit is harder than its first words, even for a learner placed lower.
+  const level = Math.max(course?.level ?? 1, getUnit(unitId)?.tier ?? 1);
 
   useEffect(() => {
     if (!target) return;
