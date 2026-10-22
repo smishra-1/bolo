@@ -14,6 +14,8 @@ export const es: Messages = {
     errorGeneric: "Algo salió mal. Inténtalo de nuevo.",
     quota: "Ya usaste la ayuda de IA de hoy. ¡Vuelve mañana!",
     setupNeeded: "Bolo aún no está conectado. Añade tus claves en .env.local y reinicia.",
+    signInAgain: "Inicia sesión de nuevo para usar esto.",
+    noVoice: "Bolo aún no puede hablar este idioma en este dispositivo.",
   },
   auth: {
     signInTitle: "¡Hola de nuevo!",

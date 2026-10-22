@@ -5,7 +5,7 @@ import { fmt, type Messages } from "@/lib/i18n";
 import type { TargetLang } from "@/lib/languages";
 import type { ChoiceStep, FillStep, ListenStep, MatchStep } from "@/lib/lesson";
 import { speak } from "@/lib/client/speech";
-import { Button } from "../ui";
+import { Button, Notice } from "../ui";
 
 /** What the feedback popup needs to explain an answer. */
 export type StepOutcome = {
@@ -218,6 +218,7 @@ export function ChoiceStepView({ step, target, m, onDone }: StepProps<ChoiceStep
 
 export function ListenStepView({ step, target, m, onDone }: StepProps<ListenStep>) {
   const [picked, setPicked] = useState<string | null>(null);
+  const [noVoice, setNoVoice] = useState(false);
   const check = () => {
     if (!picked) return;
     onDone({
@@ -241,9 +242,10 @@ export function ListenStepView({ step, target, m, onDone }: StepProps<ListenStep
       hintLabel={m.lesson.hint}
       footer={<CheckButton m={m} disabled={!picked} onClick={check} />}
     >
-      <Button variant="secondary" className="self-center px-8 py-6 text-2xl" onClick={() => speak(step.word, target)}>
+      <Button variant="secondary" className="self-center px-8 py-6 text-2xl" onClick={async () => setNoVoice(!(await speak(step.word, target)))}>
         <span aria-hidden>🔊</span> {m.lesson.tapToListen}
       </Button>
+      {noVoice && <Notice tone="error">{m.common.noVoice}</Notice>}
       <div className="grid grid-cols-3 gap-3">
         {step.options.map((option, i) => (
           <OptionButton key={option.meaning} shortcut={i + 1} selected={picked === option.meaning} onClick={() => setPicked(option.meaning)}>

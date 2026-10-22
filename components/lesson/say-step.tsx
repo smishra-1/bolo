@@ -19,6 +19,7 @@ export function SayStepView({ step, target, m, onDone }: { step: SayStep; target
   const [result, setResult] = useState<PronunciationResult | null>(null);
   const [best, setBest] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [noVoice, setNoVoice] = useState(false);
 
   const recorder = useRecorder(async (clip) => {
     setChecking(true);
@@ -63,7 +64,7 @@ export function SayStepView({ step, target, m, onDone }: { step: SayStep; target
       <p className="text-muted">
         {step.romanization && <span className="mr-2 font-semibold">{step.romanization}</span>}({fmt(m.lesson.means, { meaning: step.meaning })})
       </p>
-      <Button variant="secondary" onClick={() => speak(step.word, target, 0.7)}>
+      <Button variant="secondary" onClick={async () => setNoVoice(!(await speak(step.word, target, 0.7)))}>
         <span aria-hidden>🔊</span> {m.lesson.listenFirst}
       </Button>
 
@@ -80,6 +81,7 @@ export function SayStepView({ step, target, m, onDone }: { step: SayStep; target
         {checking ? m.lesson.checking : recording ? m.lesson.listening : m.lesson.tapAndSay}
       </p>
 
+      {noVoice && <Notice tone="error">{m.common.noVoice}</Notice>}
       {micUnavailable && <Notice tone="error">{m.lesson.micBlocked}</Notice>}
       {error && <Notice tone="error">{error}</Notice>}
 

@@ -59,6 +59,7 @@ export function errorMessage(error: unknown, m: Messages): string {
   if (error instanceof ApiError) {
     if (error.code === "quota") return m.common.quota;
     if (error.code === "not_configured") return m.common.setupNeeded;
+    if (error.code === "unauthorized") return m.common.signInAgain;
   }
   return m.common.errorGeneric;
 }

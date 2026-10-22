@@ -12,6 +12,8 @@ export const en = {
     errorGeneric: "Something went wrong. Please try again.",
     quota: "You've used today's AI help. Come back tomorrow!",
     setupNeeded: "Bolo isn't connected yet. Add your keys to .env.local and restart.",
+    signInAgain: "Please sign in again to use this.",
+    noVoice: "Bolo can't speak this language on this device yet.",
   },
   auth: {
     signInTitle: "Welcome back!",
