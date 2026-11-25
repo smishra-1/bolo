@@ -10,3 +10,6 @@ export const isAiConfigured = () => Boolean(process.env.AI_GATEWAY_API_KEY || pr
 export const chatModel = () => process.env.AI_GATEWAY_MODEL || "openai/gpt-4.1-mini";
 
 export const transcriptionModel = () => process.env.AI_GATEWAY_TRANSCRIBE_MODEL || "openai/whisper-1";
+
+/** Used only when the learner's device has no built-in voice for a language. */
+export const speechModel = () => process.env.AI_GATEWAY_SPEECH_MODEL || "google/gemini-3.8-flash-lite-tts";
