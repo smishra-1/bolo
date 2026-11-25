@@ -47,3 +47,15 @@ export function tierStart(tier: number): number {
   const index = UNITS.findIndex((unit) => unit.tier >= tier);
   return index === -1 ? UNITS.length - 1 : index;
 }
+
+/**
+ * Every unit has three parts, in order: learn the words, build sentences from
+ * them, then a short test of both. Part ids may use only a–z (see the checks
+ * in supabase/schema.sql).
+ */
+export const PARTS = ["words", "sentences", "test"] as const;
+export type Part = (typeof PARTS)[number];
+
+export function isPart(value: string): value is Part {
+  return (PARTS as readonly string[]).includes(value);
+}

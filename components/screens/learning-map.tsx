@@ -5,11 +5,11 @@ import { Fragment } from "react";
 import { useProgress } from "@/hooks/use-progress";
 import { fmt } from "@/lib/i18n";
 import { LANGS } from "@/lib/languages";
-import { isUnlocked, todaysPick } from "@/lib/progress";
+import { isUnlocked, todaysPick, unitFinished } from "@/lib/progress";
 import { UNITS, getUnit } from "@/lib/units";
 import { useApp } from "../app-provider";
 import { BottomNav, TopBar } from "../app-shell";
-import { ButtonLink, Card, Stars } from "../ui";
+import { ButtonLink, Card } from "../ui";
 
 // Horizontal offsets (px) that make the path wind left and right.
 const WIND = [0, 64, 96, 40, -40, -80];
@@ -37,8 +37,10 @@ export function LearningMap() {
   if (!target) return null;
 
   const level = course?.level ?? 1;
-  const pickId = todaysPick(stars, level);
-  const pick = getUnit(pickId)!;
+  const pick = todaysPick(stars, level);
+  const pickId = pick.unit;
+  const pickUnit = getUnit(pickId)!;
+  const partName = { words: m.unit.wordsTitle, sentences: m.unit.sentencesTitle, test: m.unit.testTitle };
 
   return (
     <>
@@ -57,7 +59,9 @@ export function LearningMap() {
           <ol className="flex flex-col items-center pt-10 pb-4" style={{ gap: GAP }}>
             {UNITS.map((unit, index) => {
               const open = isUnlocked(index, stars, level);
-              const count = stars[unit.id] ?? 0;
+              const progress = stars[unit.id];
+              const finished = unitFinished(progress);
+              const crowned = (progress?.test ?? 0) >= 3;
               const isPick = unit.id === pickId;
               const name = m.units[unit.id];
               const look = ISLANDS[index % ISLANDS.length];
@@ -85,13 +89,13 @@ export function LearningMap() {
                       <span aria-hidden className={open ? "drop-shadow-sm group-hover:animate-wiggle" : "opacity-60 grayscale"}>
                         {open ? unit.emoji : "🔒"}
                       </span>
-                      {count > 0 && (
+                      {finished && (
                         <span
                           aria-hidden
-                          className={`absolute -top-1 -right-1 grid size-8 animate-star place-items-center rounded-full border-2 border-ink text-sm ${count === 3 ? "bg-sun" : "bg-yay text-white"}`}
+                          className={`absolute -top-1 -right-1 grid size-8 animate-star place-items-center rounded-full border-2 border-ink text-sm ${crowned ? "bg-sun" : "bg-yay text-white"}`}
                           style={{ animationDelay: `${300 + index * 80}ms` }}
                         >
-                          {count === 3 ? "👑" : "✓"}
+                          {crowned ? "👑" : "✓"}
                         </span>
                       )}
                     </span>
@@ -101,7 +105,15 @@ export function LearningMap() {
                   >
                     {name}
                   </span>
-                  {open && <Stars count={count} label={fmt(m.map.stars, { n: count })} size="text-sm" />}
+                  {open && (
+                    <span className="flex gap-1.5 text-sm" role="img" aria-label={`${m.unit.wordsTitle}, ${m.unit.sentencesTitle}, ${m.unit.testTitle}`}>
+                      {(["words", "sentences", "test"] as const).map((part) => (
+                        <span key={part} aria-hidden className={(progress?.[part] ?? 0) > 0 ? "" : "opacity-25 grayscale"}>
+                          {part === "words" ? "📖" : part === "sentences" ? "🧱" : "🏆"}
+                        </span>
+                      ))}
+                    </span>
+                  )}
                 </>
               );
 
@@ -139,12 +151,12 @@ export function LearningMap() {
           <Card className="animate-pop bg-sun-soft p-5 text-center" style={{ animationDelay: "120ms" }}>
             <p className="font-display text-lg font-bold">✨ {m.map.todaysPick}</p>
             <p className="text-xs text-muted">{m.map.pickedForYou}</p>
-            <p className="my-2 inline-block animate-float text-5xl" aria-hidden>{pick.emoji}</p>
-            <p className="font-display text-2xl font-semibold">{m.units[pick.id]}</p>
+            <p className="my-2 inline-block animate-float text-5xl" aria-hidden>{pickUnit.emoji}</p>
+            <p className="font-display text-2xl font-semibold">{m.units[pickUnit.id]}</p>
             <p className="mb-3 text-sm text-muted">
-              {fmt(m.map.minutes, { n: 5 })} · {fmt(m.map.wordsCount, { n: pick.seeds.length })}
+              {partName[pick.part]} · {fmt(m.map.minutes, { n: 5 })}
             </p>
-            <ButtonLink href={`/lesson/${pick.id}`} className="w-full">
+            <ButtonLink href={`/lesson/${pick.unit}/${pick.part}`} className="w-full">
               {m.map.start} →
             </ButtonLink>
           </Card>

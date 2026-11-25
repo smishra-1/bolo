@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { buildLessonSteps, normalizeLessonContent, parseCachedLesson, withReading, type LessonContent } from "@/lib/lesson";
+import {
+  buildSentencesLesson,
+  buildUnitTest,
+  buildWordsLesson,
+  isScored,
+  joinTokens,
+  normalizeLessonContent,
+  sentenceReading,
+  withReading,
+  type LessonContent,
+} from "@/lib/lesson";
+
+const tok = (text: string, romanization: string | null = null) => ({ text, romanization });
 
 const raw: LessonContent = {
   title: " Colours ",
@@ -14,8 +26,10 @@ const raw: LessonContent = {
     { word: "gris", romanization: null, meaning: "grey", emoji: "🩶" },
   ],
   sentences: [
-    { text: "El cielo es azul", blank: "azul", meaning: "The sky is blue", romanization: null },
-    { text: "La rosa es roja", blank: "rojo", meaning: "The rose is red", romanization: null },
+    { text: "El cielo es azul.", tokens: [tok("El"), tok("cielo"), tok("es"), tok("azul")], meaning: "The sky is blue" },
+    { text: "La rosa es roja.", tokens: [tok("La"), tok("rosa"), tok("es"), tok("roja")], meaning: "The rose is red" },
+    { text: "Me gusta el verde", tokens: [tok("Me"), tok("gusta"), tok("el"), tok("verde")], meaning: "I like green" },
+    { text: "Tengo un gato negro", tokens: [tok("Tengo"), tok("un"), tok("gato"), tok("negro")], meaning: "I have a black cat" },
   ],
 };
 
@@ -27,39 +41,71 @@ describe("normalizeLessonContent", () => {
     expect(content.words[1].romanization).toBeNull();
   });
 
-  it("drops sentences whose blank is not in the text", () => {
-    expect(normalizeLessonContent(raw)!.sentences).toHaveLength(1);
+  it("keeps sentences whose tokens spell the text, ignoring spaces and punctuation", () => {
+    expect(normalizeLessonContent(raw)!.sentences).toHaveLength(4);
+  });
+
+  it("drops sentences whose tokens do not spell the text, or that are too short", () => {
+    const bad = [
+      { text: "El cielo es azul", tokens: [tok("El"), tok("mar"), tok("es"), tok("azul")], meaning: "wrong tokens" },
+      { text: "Hola", tokens: [tok("Hola")], meaning: "one tile" },
+      raw.sentences[0],
+      raw.sentences[1],
+    ];
+    expect(normalizeLessonContent({ ...raw, sentences: bad })!.sentences.map((s) => s.text)).toEqual(["El cielo es azul.", "La rosa es roja."]);
   });
 
   it("rejects content too thin for a lesson", () => {
     expect(normalizeLessonContent({ ...raw, words: raw.words.slice(0, 3) })).toBeNull();
-    expect(normalizeLessonContent({ ...raw, sentences: [] })).toBeNull();
+    expect(normalizeLessonContent({ ...raw, sentences: raw.sentences.slice(0, 1) })).toBeNull();
   });
 });
 
-describe("buildLessonSteps", () => {
+describe("lessons", () => {
   const content = normalizeLessonContent(raw)!;
+  const types = (steps: ReturnType<typeof buildWordsLesson>) => steps.map((s) => s.type);
 
-  it("builds one step of each kind, in order", () => {
-    expect(buildLessonSteps(content).map((s) => s.type)).toEqual(["match", "choice", "listen", "fill", "say"]);
+  it("part 1 shows every word on a card, then a six-question quiz", () => {
+    const steps = buildWordsLesson(content);
+    expect(types(steps)).toEqual([...Array(6).fill("card"), "match", "choice", "listen", "choice", "listen", "say"]);
+    expect(steps.filter(isScored)).toHaveLength(6);
   });
 
-  it("always includes the answer among distinct options", () => {
+  it("part 2 shows every sentence, then rebuilds each one, the last by ear", () => {
+    const steps = buildSentencesLesson(content);
+    expect(types(steps)).toEqual([...Array(4).fill("sentenceCard"), ...Array(4).fill("build")]);
+    const builds = steps.filter((s) => s.type === "build");
+    expect(builds.map((s) => s.listen)).toEqual([false, false, false, true]);
+  });
+
+  it("part 3 tests words, then sentences", () => {
+    const steps = buildUnitTest(content);
+    expect(types(steps)).toEqual(["match", "choice", "choice", "listen", "listen", "build", "build", "build"]);
+    expect(steps.every(isScored)).toBe(true);
+  });
+
+  it("always includes the answer among distinct word options", () => {
     for (let i = 0; i < 25; i++) {
-      for (const step of buildLessonSteps(content)) {
-        if (step.type === "choice" || step.type === "fill") {
+      for (const step of buildWordsLesson(content)) {
+        if (step.type === "choice") {
           expect(step.options).toContain(step.answer);
           expect(new Set(step.options).size).toBe(step.options.length);
         }
         if (step.type === "listen") expect(step.options.map((o) => o.meaning)).toContain(step.answer);
-        if (step.type === "match") expect([...step.meanings].sort()).toEqual(step.pairs.map((p) => p.meaning).sort());
       }
     }
   });
 
-  it("splits the sentence around the blank", () => {
-    const fill = buildLessonSteps(content).find((s) => s.type === "fill")!;
-    expect(fill).toMatchObject({ before: "El cielo es ", after: "", answer: "azul" });
+  it("gives a build step every tile of the sentence, plus at most one spare, never in order", () => {
+    for (let i = 0; i < 25; i++) {
+      for (const step of buildSentencesLesson(content)) {
+        if (step.type !== "build") continue;
+        const bank = step.bank.map((t) => t.text);
+        for (const t of step.answer) expect(bank).toContain(t.text);
+        expect(bank.length - step.answer.length).toBeLessThanOrEqual(1);
+        expect(bank.slice(0, step.answer.length)).not.toEqual(step.answer.map((t) => t.text));
+      }
+    }
   });
 });
 
@@ -71,10 +117,8 @@ describe("readings", () => {
       { word: "நன்றி", romanization: "nandri", meaning: "thank you", emoji: "🙏" },
       { word: "தயவு செய்து", romanization: "thayavu seithu", meaning: "please", emoji: "🙂" },
       { word: "பிரியாவிடை", romanization: "piriyaavidai", meaning: "goodbye", emoji: "👋" },
-      { word: "ஆம்", romanization: "aam", meaning: "yes", emoji: "✅" },
-      { word: "இல்லை", romanization: "illai", meaning: "no", emoji: "❌" },
     ],
-    sentences: [{ text: "வணக்கம்", blank: "வணக்கம்", meaning: "Hello", romanization: "vanakkam" }],
+    sentences: [],
   };
 
   it("shows a word with its reading, but not when they match", () => {
@@ -84,16 +128,19 @@ describe("readings", () => {
   });
 
   it("gives steps the reading of every word", () => {
-    const [match, choice, listen, fill] = buildLessonSteps(tamil);
+    const [match, choice] = buildWordsLesson(tamil).filter((s) => s.type === "match" || s.type === "choice");
     expect(match.type === "match" && match.romans["நன்றி"]).toBe("nandri");
-    expect(choice.type === "choice" && Object.keys(choice.romans)).toHaveLength(6);
-    expect(listen.type === "listen" && listen.romanization).toBeTruthy();
-    expect(fill.type === "fill" && fill.romanization).toBe("vanakkam");
+    expect(choice.type === "choice" && choice.romans["வணக்கம்"]).toBe("vanakkam");
   });
 
-  it("still reads lessons cached before sentences had a reading", () => {
-    const old = { ...tamil, sentences: [{ text: "வணக்கம்", blank: "வணக்கம்", meaning: "Hello" }] };
-    expect(parseCachedLesson(old)?.sentences[0].romanization).toBeNull();
-    expect(parseCachedLesson({ nonsense: true })).toBeNull();
+  it("reads a whole sentence only when every token has a reading", () => {
+    expect(sentenceReading([tok("நான்", "naan"), tok("நீ", "nee")])).toBe("naan nee");
+    expect(sentenceReading([tok("நான்", "naan"), tok("நீ")])).toBeNull();
+    expect(sentenceReading([])).toBeNull();
+  });
+
+  it("joins tokens with spaces, or without for scripts that have none", () => {
+    expect(joinTokens([tok("El"), tok("gato")], "El gato")).toBe("El gato");
+    expect(joinTokens([tok("私は"), tok("猫")], "私は猫です")).toBe("私は猫");
   });
 });

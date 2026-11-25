@@ -3,7 +3,7 @@
 import { useEffect, useEffectEvent, useState, type ReactNode } from "react";
 import { fmt, type Messages } from "@/lib/i18n";
 import type { TargetLang } from "@/lib/languages";
-import { withReading, type ChoiceStep, type FillStep, type ListenStep, type MatchStep } from "@/lib/lesson";
+import { joinTokens, sentenceReading, withReading, type BuildStep, type CardStep, type ChoiceStep, type ListenStep, type MatchStep, type SentenceCardStep } from "@/lib/lesson";
 import { speak } from "@/lib/client/speech";
 import { Button, Notice } from "../ui";
 
@@ -272,43 +272,138 @@ export function ListenStepView({ step, target, m, onDone }: StepProps<ListenStep
   );
 }
 
-export function FillStepView({ step, target, m, onDone }: StepProps<FillStep>) {
-  const [picked, setPicked] = useState<string | null>(null);
-  const full = `${step.before}${step.answer}${step.after}`;
+/** Tap the tiles in order to build the sentence; tap a placed tile to take it back. */
+export function BuildStepView({ step, target, m, onDone }: StepProps<BuildStep>) {
+  const [placed, setPlaced] = useState<number[]>([]);
+  const [noVoice, setNoVoice] = useState(false);
+  const reading = sentenceReading(step.answer);
+
+  useEffect(() => {
+    if (step.listen) speak(step.text, target);
+  }, [step.listen, step.text, target]);
+
+  const free = step.bank.map((_, i) => i).filter((i) => !placed.includes(i));
+  const built = placed.map((i) => step.bank[i]);
+  const question = step.listen ? m.lesson.buildListenTitle : `${m.lesson.buildHelp} ${quote(step.meaning)}`;
+
   const check = () => {
-    if (!picked) return;
-    speak(full, target);
+    if (placed.length === 0) return;
+    speak(step.text, target);
     onDone({
-      correct: picked === step.answer,
-      question: `${m.lesson.fillTitle}: ${step.before}___${step.after}`,
-      correctAnswer: withReading(step.answer, step.romans[step.answer]),
-      learnerAnswer: picked ? withReading(picked, step.romans[picked]) : null,
-      lines: [`${quote(withReading(full, step.romanization))} ${fmt(m.lesson.means, { meaning: step.meaning })}`],
+      correct: built.length === step.answer.length && built.every((t, i) => t.text === step.answer[i].text),
+      question,
+      correctAnswer: withReading(step.text, reading),
+      learnerAnswer: joinTokens(built, step.text),
+      lines: [`${quote(withReading(step.text, reading))} ${fmt(m.lesson.means, { meaning: step.meaning })}`],
     });
   };
-  useStepKeys(step.options.length, (i) => setPicked(step.options[i]), check);
+
+  const tile = (index: number, where: "bank" | "line") => {
+    const t = step.bank[index];
+    return (
+      <button
+        key={`${where}-${index}`}
+        type="button"
+        lang={target}
+        aria-label={where === "line" ? `${t.text}: ${m.lesson.takeBack}` : t.text}
+        onClick={() => setPlaced((p) => (where === "bank" ? [...p, index] : p.filter((i) => i !== index)))}
+        className="chunky press flex min-h-14 min-w-16 flex-col items-center justify-center rounded-2xl bg-white px-4 py-1 font-display text-xl font-semibold hover:bg-sky-50"
+      >
+        {t.text}
+        {t.romanization && <span className="font-sans text-xs font-normal text-muted">{t.romanization}</span>}
+      </button>
+    );
+  };
+
   return (
     <StepFrame
-      title={m.lesson.fillTitle}
-      hint={fmt(m.lesson.fillHint, { meaning: step.meaning })}
+      title={step.listen ? m.lesson.buildListenTitle : m.lesson.buildTitle}
+      help={step.listen ? undefined : fmt(m.lesson.buildSub, { lang: m.languages[target] })}
+      hint={m.lesson.buildHint}
       hintLabel={m.lesson.hint}
-      footer={<CheckButton m={m} disabled={!picked} onClick={check} />}
+      footer={
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => setPlaced([])} disabled={placed.length === 0}>
+            {m.lesson.clear}
+          </Button>
+          <CheckButton m={m} disabled={placed.length === 0} onClick={check} />
+        </div>
+      }
     >
-      <p className="text-center font-display text-3xl leading-relaxed font-semibold">
-        {step.before}
-        <span className={`mx-1 inline-block min-w-20 border-b-4 px-2 ${picked ? "border-brand text-brand" : "border-ink"}`}>{picked ?? " "}</span>
-        {step.after}
-      </p>
-      {step.romanization && <p className="text-center text-muted">{step.romanization}</p>}
-      <div className="flex flex-wrap justify-center gap-3">
-        {step.options.map((option, i) => (
-          <div key={option} className="min-w-28">
-            <OptionButton shortcut={i + 1} selected={picked === option} onClick={() => setPicked(option)}>
-              <Reading word={option} roman={step.romans[option]} />
-            </OptionButton>
-          </div>
-        ))}
+      {step.listen ? (
+        <div className="flex flex-col items-center gap-2">
+          <Button variant="secondary" className="px-8 py-6 text-2xl" onClick={async () => setNoVoice(!(await speak(step.text, target)))}>
+            <span aria-hidden>🔊</span> {m.lesson.tapToListen}
+          </Button>
+          {noVoice && <Notice tone="error">{m.common.noVoice}</Notice>}
+        </div>
+      ) : (
+        <p className="text-center font-display text-2xl font-semibold">{quote(step.meaning)}</p>
+      )}
+      <div aria-label={m.lesson.yourSentence} className="flex min-h-20 flex-wrap items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-ink bg-sky-50 p-3">
+        {placed.length === 0 ? <span className="text-muted">{m.lesson.tapWords}</span> : placed.map((i) => tile(i, "line"))}
+      </div>
+      <div aria-label={m.lesson.wordBank} className="flex flex-wrap items-center justify-center gap-2">
+        {free.map((i) => tile(i, "bank"))}
       </div>
     </StepFrame>
+  );
+}
+
+/** A new word: look, listen, then move on. Not scored. */
+export function CardStepView({ step, target, m, onNext }: { step: CardStep; target: TargetLang; m: Messages; onNext: () => void }) {
+  const [noVoice, setNoVoice] = useState(false);
+  useEffect(() => {
+    speak(step.word, target);
+  }, [step.word, target]);
+
+  return (
+    <div className="flex flex-col items-center gap-4 text-center">
+      <p className="text-sm font-semibold tracking-wide text-muted uppercase">{m.lesson.cardTitle}</p>
+      <span className="text-8xl" aria-hidden>{step.emoji}</span>
+      <p lang={target} className="font-display text-6xl font-bold">{step.word}</p>
+      {step.romanization && <p className="text-2xl font-semibold text-brand">{step.romanization}</p>}
+      <p className="font-display text-3xl">{quote(step.meaning)}</p>
+      <Button variant="secondary" onClick={async () => setNoVoice(!(await speak(step.word, target)))}>
+        <span aria-hidden>🔊</span> {m.lesson.tapToHear}
+      </Button>
+      {noVoice && <Notice tone="error">{m.common.noVoice}</Notice>}
+      <Button onClick={onNext} className="mt-2 min-w-40">
+        {m.lesson.gotIt} →
+      </Button>
+    </div>
+  );
+}
+
+/** A new sentence, shown tile by tile so its parts are clear. Not scored. */
+export function SentenceCardView({ step, target, m, onNext }: { step: SentenceCardStep; target: TargetLang; m: Messages; onNext: () => void }) {
+  const [noVoice, setNoVoice] = useState(false);
+  const { sentence } = step;
+  const reading = sentenceReading(sentence.tokens);
+  useEffect(() => {
+    speak(sentence.text, target);
+  }, [sentence.text, target]);
+
+  return (
+    <div className="flex flex-col items-center gap-4 text-center">
+      <p className="text-sm font-semibold tracking-wide text-muted uppercase">{m.lesson.sentenceCardTitle}</p>
+      <ul lang={target} className="flex flex-wrap justify-center gap-2" aria-label={sentence.text}>
+        {sentence.tokens.map((t, i) => (
+          <li key={`${t.text}-${i}`} className="chunky flex min-w-16 flex-col items-center rounded-2xl bg-white px-4 py-2 font-display text-2xl font-semibold">
+            {t.text}
+            {t.romanization && <span className="font-sans text-xs font-normal text-muted">{t.romanization}</span>}
+          </li>
+        ))}
+      </ul>
+      {reading && <p className="text-xl font-semibold text-brand">{reading}</p>}
+      <p className="font-display text-2xl">{quote(sentence.meaning)}</p>
+      <Button variant="secondary" onClick={async () => setNoVoice(!(await speak(sentence.text, target)))}>
+        <span aria-hidden>🔊</span> {m.lesson.tapToHear}
+      </Button>
+      {noVoice && <Notice tone="error">{m.common.noVoice}</Notice>}
+      <Button onClick={onNext} className="mt-2 min-w-40">
+        {m.lesson.gotIt} →
+      </Button>
+    </div>
   );
 }

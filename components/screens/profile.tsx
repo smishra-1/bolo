@@ -7,7 +7,8 @@ import { speak } from "@/lib/client/speech";
 import { fmt, uiLocaleFor } from "@/lib/i18n";
 import { LANGS, NATIVE_LANGS, type TargetLang } from "@/lib/languages";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { UNITS } from "@/lib/units";
+import { totalStars } from "@/lib/progress";
+import { PARTS, UNITS } from "@/lib/units";
 import { useApp } from "../app-provider";
 import { Avatar, BottomNav, TopBar } from "../app-shell";
 import { Button, Card, Notice } from "../ui";
@@ -66,12 +67,12 @@ function ProfileView({ target }: { target: TargetLang }) {
     };
   }, [target]);
 
-  const totalStars = Object.values(stars).reduce((sum, n) => sum + (n ?? 0), 0);
+  const earned = totalStars(stars);
   const levelName = m.levels[String(course?.level ?? 1) as "1" | "2" | "3"];
   const stats = [
     { icon: "⭐", value: course?.points ?? 0, label: m.done.points },
     { icon: "🔥", value: streak, label: m.done.streak },
-    { icon: "🏅", value: `${totalStars}/${UNITS.length * 3}`, label: m.profile.stars },
+    { icon: "🏅", value: `${earned}/${UNITS.length * PARTS.length * 3}`, label: m.profile.stars },
     { icon: "📖", value: words?.count ?? "…", label: m.profile.words },
   ];
 

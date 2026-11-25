@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { currentStreak, isUnlocked, nextUnit, pointsFor, starsFor, todaysPick, weekActivity } from "@/lib/progress";
+import { currentStreak, isPartUnlocked, isUnlocked, nextStep, nextUnit, pointsFor, starsFor, todaysPick, totalStars, weekActivity } from "@/lib/progress";
+import { UNITS } from "@/lib/units";
 
 const day = (y: number, m: number, d: number) => new Date(y, m - 1, d, 12);
 
@@ -20,11 +21,20 @@ describe("stars and points", () => {
 });
 
 describe("unlocking", () => {
-  it("opens the first unit, then each unit after a starred one", () => {
+  it("opens the first unit, then each unit after one with its words and sentences done", () => {
     expect(isUnlocked(0, {}, 1)).toBe(true);
     expect(isUnlocked(1, {}, 1)).toBe(false);
-    expect(isUnlocked(1, { hello: 1 }, 1)).toBe(true);
-    expect(isUnlocked(2, { hello: 3 }, 1)).toBe(false);
+    expect(isUnlocked(1, { hello: { words: 3 } }, 1)).toBe(false);
+    expect(isUnlocked(1, { hello: { words: 1, sentences: 1 } }, 1)).toBe(true);
+    expect(isUnlocked(2, { hello: { words: 3, sentences: 3 } }, 1)).toBe(false);
+  });
+
+  it("opens the parts of a unit in order", () => {
+    expect(isPartUnlocked("words", undefined)).toBe(true);
+    expect(isPartUnlocked("sentences", undefined)).toBe(false);
+    expect(isPartUnlocked("sentences", { words: 1 })).toBe(true);
+    expect(isPartUnlocked("test", { words: 3 })).toBe(false);
+    expect(isPartUnlocked("test", { words: 1, sentences: 1 })).toBe(true);
   });
 
   it("opens more units for a higher placement level", () => {
@@ -34,17 +44,31 @@ describe("unlocking", () => {
     expect(isUnlocked(17, {}, 3)).toBe(false);
   });
 
-  it("picks the open unit with the fewest stars", () => {
-    expect(todaysPick({}, 1)).toBe("hello");
-    expect(todaysPick({ hello: 3 }, 1)).toBe("colors");
-    expect(todaysPick({ hello: 2, colors: 1 }, 1)).toBe("animals");
-    expect(todaysPick({ hello: 3, colors: 3 }, 1)).toBe("animals");
+  it("picks the next words, sentences or test to do", () => {
+    expect(todaysPick({}, 1)).toEqual({ unit: "hello", part: "words" });
+    expect(todaysPick({ hello: { words: 2 } }, 1)).toEqual({ unit: "hello", part: "sentences" });
+    expect(todaysPick({ hello: { words: 2, sentences: 1 } }, 1)).toEqual({ unit: "colors", part: "words" });
   });
 
-  it("finds the next unit", () => {
+  it("goes back to unfinished tests once every open unit has words and sentences", () => {
+    const done = { words: 3, sentences: 3 };
+    const progress = Object.fromEntries(UNITS.map((u) => [u.id, done]));
+    expect(todaysPick(progress, 1)).toEqual({ unit: "hello", part: "test" });
+    expect(todaysPick({ ...progress, hello: { ...done, test: 3 } }, 1)).toEqual({ unit: "colors", part: "test" });
+  });
+
+  it("moves from words to sentences to the test to the next unit", () => {
+    expect(nextStep("hello", "words")).toEqual({ unit: "hello", part: "sentences" });
+    expect(nextStep("hello", "sentences")).toEqual({ unit: "hello", part: "test" });
+    expect(nextStep("hello", "test")).toEqual({ unit: "colors", part: "words" });
+    expect(nextStep("travel", "test")).toBeUndefined();
+  });
+
+  it("finds the next unit and totals stars", () => {
     expect(nextUnit("hello")).toBe("colors");
     expect(nextUnit("numbers")).toBe("body");
     expect(nextUnit("travel")).toBeUndefined();
+    expect(totalStars({ hello: { words: 3, sentences: 2 }, colors: { words: 1 } })).toBe(6);
   });
 });
 

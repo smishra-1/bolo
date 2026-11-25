@@ -62,6 +62,7 @@ export function TopBar({ streak, children }: { streak?: number; children?: React
 
 const TABS = [
   { href: "/map", icon: "🗺️", key: "learn" },
+  { href: "/practice", icon: "🎯", key: "practice" },
   { href: "/chat", icon: "💬", key: "chat" },
   { href: "/translate", icon: "🌐", key: "translate" },
 ] as const;
@@ -71,7 +72,7 @@ export function BottomNav() {
   const { m } = useApp();
   return (
     <nav aria-label={m.nav.label} className="fixed inset-x-0 bottom-0 z-10 border-t-2 border-ink bg-white pb-[env(safe-area-inset-bottom)]">
-      <ul className="mx-auto grid max-w-md grid-cols-3">
+      <ul className="mx-auto grid max-w-md grid-cols-4">
         {TABS.map((tab) => {
           const active = pathname.startsWith(tab.href);
           return (

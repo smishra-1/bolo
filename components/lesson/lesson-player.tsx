@@ -1,18 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { errorMessage, postJson } from "@/lib/client/api";
-import { fmt, type Messages } from "@/lib/i18n";
-import type { TargetLang } from "@/lib/languages";
-import { buildLessonSteps, type LessonContent, type LessonStep } from "@/lib/lesson";
-import { getUnit, type UnitId } from "@/lib/units";
+import { buildSentencesLesson, buildUnitTest, buildWordsLesson, isScored, type LessonContent, type LessonStep } from "@/lib/lesson";
+import { getUnit, type Part, type UnitId } from "@/lib/units";
 import { useApp } from "../app-provider";
-import { Button, Notice, ProgressBar, Spinner } from "../ui";
-import { FeedbackSheet } from "./feedback-sheet";
+import { Button, Notice, Spinner } from "../ui";
 import { LessonDone } from "./lesson-done";
-import { SayStepView } from "./say-step";
-import { ChoiceStepView, FillStepView, ListenStepView, MatchStepView, type StepOutcome } from "./steps";
+import { Run } from "./run";
+import type { StepOutcome } from "./steps";
 
 type Phase =
   | { kind: "loading" }
@@ -20,19 +17,12 @@ type Phase =
   | { kind: "playing"; content: LessonContent; steps: LessonStep[]; round: number }
   | { kind: "done"; content: LessonContent; correct: number; total: number; round: number; outcomes: StepOutcome[] };
 
-const STEP_ICON: Record<LessonStep["type"], string> = { match: "🧩", choice: "👆", listen: "🔊", fill: "✏️", say: "🎤" };
-
-function stepTitle(step: LessonStep, m: Messages): string {
-  switch (step.type) {
-    case "match": return m.lesson.matchTitle;
-    case "choice": return m.lesson.choiceTitle;
-    case "listen": return m.lesson.listenTitle;
-    case "fill": return m.lesson.fillTitle;
-    case "say": return m.lesson.sayTitle;
-  }
+function stepsFor(part: Part, content: LessonContent): LessonStep[] {
+  if (part === "words") return buildWordsLesson(content);
+  return part === "sentences" ? buildSentencesLesson(content) : buildUnitTest(content);
 }
 
-export function LessonPlayer({ unitId }: { unitId: UnitId }) {
+export function LessonPlayer({ unitId, part }: { unitId: UnitId; part: Part }) {
   const { target, native, course, m } = useApp();
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
   const [attempt, setAttempt] = useState(0);
@@ -43,12 +33,12 @@ export function LessonPlayer({ unitId }: { unitId: UnitId }) {
     if (!target) return;
     const controller = new AbortController();
     postJson<{ lesson: LessonContent }>("/api/lesson", { target, native, unit: unitId, level }, controller.signal)
-      .then(({ lesson }) => setPhase({ kind: "playing", content: lesson, steps: buildLessonSteps(lesson), round: 0 }))
+      .then(({ lesson }) => setPhase({ kind: "playing", content: lesson, steps: stepsFor(part, lesson), round: 0 }))
       .catch((error: unknown) => {
         if (!controller.signal.aborted) setPhase({ kind: "error", error });
       });
     return () => controller.abort();
-  }, [target, native, unitId, level, attempt]);
+  }, [target, native, unitId, part, level, attempt]);
 
   const retry = () => {
     setPhase({ kind: "loading" });
@@ -64,7 +54,7 @@ export function LessonPlayer({ unitId }: { unitId: UnitId }) {
       <main className="mx-auto flex max-w-md flex-col gap-4 px-4 py-12">
         <Notice tone="error">{message === m.common.errorGeneric ? m.lesson.loadError : message}</Notice>
         <Button onClick={retry}>{m.common.tryAgain}</Button>
-        <Link href="/map" className="text-center text-muted underline">{m.lesson.quit}</Link>
+        <Link href={`/lesson/${unitId}`} className="text-center text-muted underline">{m.lesson.quit}</Link>
       </main>
     );
   }
@@ -72,11 +62,12 @@ export function LessonPlayer({ unitId }: { unitId: UnitId }) {
     return (
       <LessonDone
         unitId={unitId}
+        part={part}
         content={phase.content}
         correct={phase.correct}
         total={phase.total}
         outcomes={phase.outcomes}
-        onAgain={() => setPhase({ kind: "playing", content: phase.content, steps: buildLessonSteps(phase.content), round: phase.round + 1 })}
+        onAgain={() => setPhase({ kind: "playing", content: phase.content, steps: stepsFor(part, phase.content), round: phase.round + 1 })}
       />
     );
   }
@@ -86,75 +77,9 @@ export function LessonPlayer({ unitId }: { unitId: UnitId }) {
       key={phase.round}
       steps={phase.steps}
       target={target}
-      onFinish={(correct, outcomes) => setPhase({ kind: "done", content: phase.content, correct, total: phase.steps.length, round: phase.round, outcomes })}
+      onFinish={(correct, outcomes) =>
+        setPhase({ kind: "done", content: phase.content, correct, total: phase.steps.filter(isScored).length, round: phase.round, outcomes })
+      }
     />
-  );
-}
-
-function Run({ steps, target, onFinish }: { steps: LessonStep[]; target: TargetLang; onFinish: (correct: number, outcomes: StepOutcome[]) => void }) {
-  const { native, m } = useApp();
-  const [index, setIndex] = useState(0);
-  const [correct, setCorrect] = useState(0);
-  const [outcome, setOutcome] = useState<StepOutcome | null>(null);
-  const [history, setHistory] = useState<StepOutcome[]>([]);
-
-  const step = steps[index];
-  const upcoming = steps.slice(index + 1, index + 3);
-
-  const advance = useCallback(
-    (result: StepOutcome) => {
-      const total = correct + (result.correct ? 1 : 0);
-      const all = [...history, result];
-      setOutcome(null);
-      setCorrect(total);
-      setHistory(all);
-      if (index + 1 >= steps.length) onFinish(total, all);
-      else setIndex(index + 1);
-    },
-    [correct, history, index, steps.length, onFinish],
-  );
-
-  const onDone = (result: StepOutcome) => {
-    // Speaking has its own inline feedback, so it skips the popup.
-    if (step.type === "say") advance(result);
-    else setOutcome(result);
-  };
-
-  const props = { target, m, onDone };
-
-  return (
-    <div className="mx-auto flex min-h-dvh max-w-5xl flex-col gap-6 px-4 py-4">
-      <header className="flex items-center gap-4">
-        <Link href="/map" aria-label={m.lesson.quit} className="grid size-10 place-items-center rounded-full text-2xl text-muted hover:bg-white">
-          ✕
-        </Link>
-        <ProgressBar value={index / steps.length} label={fmt(m.lesson.stepOf, { n: index + 1, total: steps.length })} />
-        <span className="shrink-0 text-sm font-semibold text-muted">{fmt(m.lesson.stepOf, { n: index + 1, total: steps.length })}</span>
-      </header>
-
-      <div className="grid flex-1 gap-6 md:grid-cols-[1fr_220px]">
-        <main key={index} className="chunky animate-slide-in rounded-3xl bg-white p-5 sm:p-8">
-          {step.type === "match" && <MatchStepView key={index} step={step} {...props} />}
-          {step.type === "choice" && <ChoiceStepView key={index} step={step} {...props} />}
-          {step.type === "listen" && <ListenStepView key={index} step={step} {...props} />}
-          {step.type === "fill" && <FillStepView key={index} step={step} {...props} />}
-          {step.type === "say" && <SayStepView key={index} step={step} {...props} />}
-        </main>
-
-        {upcoming.length > 0 && (
-          <aside aria-label={m.lesson.comingUp} className="hidden flex-col gap-3 md:flex">
-            <p className="text-sm font-semibold text-muted">{m.lesson.comingUp}</p>
-            {upcoming.map((s, i) => (
-              <div key={index + i} className="animate-slide-in rounded-2xl border-2 border-dashed border-ink/50 p-4 text-muted" style={{ animationDelay: `${80 + i * 60}ms` }}>
-                <span aria-hidden>{STEP_ICON[s.type]} </span>
-                {stepTitle(s, m)}
-              </div>
-            ))}
-          </aside>
-        )}
-      </div>
-
-      {outcome && <FeedbackSheet outcome={outcome} target={target} native={native} m={m} onNext={() => advance(outcome)} />}
-    </div>
   );
 }

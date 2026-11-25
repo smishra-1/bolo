@@ -89,10 +89,11 @@ create table public.unit_progress (
   user_id           uuid not null references auth.users (id) on delete cascade,
   target_lang       text not null check (target_lang = any (public.supported_langs())),
   unit_id           text not null check (unit_id ~ '^[a-z_]{1,32}$'),
+  part              text not null default 'words' check (part in ('words', 'sentences', 'test')),
   stars             smallint not null default 0 check (stars between 0 and 3),
   completions       integer not null default 0 check (completions >= 0),
   last_completed_at timestamptz,
-  primary key (user_id, target_lang, unit_id)
+  primary key (user_id, target_lang, unit_id, part)
 );
 
 create table public.lesson_attempts (
@@ -100,6 +101,7 @@ create table public.lesson_attempts (
   user_id     uuid not null references auth.users (id) on delete cascade,
   target_lang text not null check (target_lang = any (public.supported_langs())),
   unit_id     text not null check (unit_id ~ '^[a-z_]{1,32}$'),
+  part        text not null default 'words' check (part in ('words', 'sentences', 'test')),
   correct     smallint not null check (correct >= 0),
   total       smallint not null check (total between 1 and 20),
   stars       smallint not null check (stars between 0 and 3),
@@ -122,9 +124,21 @@ create table public.learned_words (
   primary key (user_id, target_lang, word)
 );
 
+create table public.learned_sentences (
+  user_id       uuid not null references auth.users (id) on delete cascade,
+  target_lang   text not null check (target_lang = any (public.supported_langs())),
+  sentence      text not null check (char_length(sentence) between 1 and 200),
+  meaning       text not null check (char_length(meaning) between 1 and 200),
+  tokens        jsonb not null check (jsonb_typeof(tokens) = 'array' and jsonb_array_length(tokens) between 2 and 8),
+  unit_id       text not null check (unit_id ~ '^[a-z_]{1,32}$'),
+  first_seen_at timestamptz not null default now(),
+  primary key (user_id, target_lang, sentence)
+);
+
 alter table public.unit_progress   enable row level security;
 alter table public.lesson_attempts enable row level security;
 alter table public.learned_words   enable row level security;
+alter table public.learned_sentences enable row level security;
 
 create policy "unit_progress: read own" on public.unit_progress
   for select to authenticated using ((select auth.uid()) = user_id);
@@ -132,8 +146,10 @@ create policy "lesson_attempts: read own" on public.lesson_attempts
   for select to authenticated using ((select auth.uid()) = user_id);
 create policy "learned_words: read own" on public.learned_words
   for select to authenticated using ((select auth.uid()) = user_id);
+create policy "learned_sentences: read own" on public.learned_sentences
+  for select to authenticated using ((select auth.uid()) = user_id);
 
-revoke insert, update, delete on public.unit_progress, public.lesson_attempts, public.learned_words
+revoke insert, update, delete on public.unit_progress, public.lesson_attempts, public.learned_words, public.learned_sentences
   from anon, authenticated;
 
 -- ---------------------------------------------------------------------------
@@ -196,6 +212,10 @@ create policy "email accounts only" on public.learned_words as restrictive
   for select to authenticated
   using (coalesce((select (auth.jwt() ->> 'is_anonymous')::boolean), false) = false);
 
+create policy "email accounts only" on public.learned_sentences as restrictive
+  for select to authenticated
+  using (coalesce((select (auth.jwt() ->> 'is_anonymous')::boolean), false) = false);
+
 create policy "email accounts only" on public.ai_usage as restrictive
   for select to authenticated
   using (coalesce((select (auth.jwt() ->> 'is_anonymous')::boolean), false) = false);
@@ -232,17 +252,19 @@ begin
 end;
 $$;
 
--- Saves a finished lesson: the attempt, the best stars for the unit, the new
--- words, and the points. Stars and points are computed here, not trusted from
+-- Saves a finished lesson part (words, sentences or test): the attempt, the best
+-- stars for that part, the new words or sentences, and the points. Stars and points are computed here, not trusted from
 -- the client. Keep in sync with lib/progress.ts.
 create or replace function public.complete_lesson(
   p_target_lang text,
   p_unit_id     text,
+  p_part        text,
   p_correct     integer,
   p_total       integer,
-  p_words       jsonb
+  p_words       jsonb,
+  p_sentences   jsonb
 )
-returns table (stars smallint, points smallint, new_words integer, total_points integer)
+returns table (stars smallint, points smallint, new_items integer, total_points integer)
 language plpgsql
 security definer
 set search_path = ''
@@ -253,9 +275,9 @@ declare
   v_ratio     numeric;
   v_stars     smallint;
   v_points    smallint;
-  v_new_words integer := 0;
+  v_new_items integer := 0;
   v_total     integer;
-  v_word      jsonb;
+  v_item      jsonb;
   v_inserted  integer;
   v_roman     text;
 begin
@@ -268,12 +290,18 @@ begin
   if p_unit_id !~ '^[a-z_]{1,32}$' then
     raise exception 'invalid unit' using errcode = '22023';
   end if;
+  if p_part is null or p_part not in ('words', 'sentences', 'test') then
+    raise exception 'invalid part' using errcode = '22023';
+  end if;
   if p_total is null or p_total < 1 or p_total > 20
      or p_correct is null or p_correct < 0 or p_correct > p_total then
     raise exception 'invalid score' using errcode = '22023';
   end if;
   if p_words is null or jsonb_typeof(p_words) <> 'array' or jsonb_array_length(p_words) > 12 then
     raise exception 'invalid words' using errcode = '22023';
+  end if;
+  if p_sentences is null or jsonb_typeof(p_sentences) <> 'array' or jsonb_array_length(p_sentences) > 8 then
+    raise exception 'invalid sentences' using errcode = '22023';
   end if;
 
   v_ratio := p_correct::numeric / p_total;
@@ -285,12 +313,12 @@ begin
   end;
   v_points := p_correct * 5 + case when v_stars = 3 then 10 else 0 end;
 
-  insert into public.lesson_attempts (user_id, target_lang, unit_id, correct, total, stars, points)
-  values (v_uid, p_target_lang, p_unit_id, p_correct, p_total, v_stars, v_points);
+  insert into public.lesson_attempts (user_id, target_lang, unit_id, part, correct, total, stars, points)
+  values (v_uid, p_target_lang, p_unit_id, p_part, p_correct, p_total, v_stars, v_points);
 
-  insert into public.unit_progress as up (user_id, target_lang, unit_id, stars, completions, last_completed_at)
-  values (v_uid, p_target_lang, p_unit_id, v_stars, 1, now())
-  on conflict (user_id, target_lang, unit_id) do update
+  insert into public.unit_progress as up (user_id, target_lang, unit_id, part, stars, completions, last_completed_at)
+  values (v_uid, p_target_lang, p_unit_id, p_part, v_stars, 1, now())
+  on conflict (user_id, target_lang, unit_id, part) do update
     set stars = greatest(up.stars, excluded.stars),
         completions = up.completions + 1,
         last_completed_at = now();
@@ -300,34 +328,50 @@ begin
   on conflict (user_id, target_lang) do update set points = c.points + excluded.points
   returning c.points into v_total;
 
-  for v_word in select * from jsonb_array_elements(p_words) loop
-    if jsonb_typeof(v_word->'word') = 'string' and jsonb_typeof(v_word->'meaning') = 'string'
-       and char_length(v_word->>'word') between 1 and 80
-       and char_length(v_word->>'meaning') between 1 and 120 then
-      v_roman := nullif(btrim(v_word->>'romanization'), '');
-      if v_roman is not null and char_length(v_roman) > 80 then
-        v_roman := null;
+  if p_part = 'words' then
+    for v_item in select * from jsonb_array_elements(p_words) loop
+      if jsonb_typeof(v_item->'word') = 'string' and jsonb_typeof(v_item->'meaning') = 'string'
+         and char_length(v_item->>'word') between 1 and 80
+         and char_length(v_item->>'meaning') between 1 and 120 then
+        v_roman := nullif(btrim(v_item->>'romanization'), '');
+        if v_roman is not null and char_length(v_roman) > 80 then
+          v_roman := null;
+        end if;
+        insert into public.learned_words (user_id, target_lang, word, meaning, romanization, unit_id)
+        values (v_uid, p_target_lang, v_item->>'word', v_item->>'meaning', v_roman, p_unit_id)
+        on conflict do nothing;
+        get diagnostics v_inserted = row_count;
+        -- Words learned before readings existed get theirs the next time they appear.
+        if v_inserted = 0 and v_roman is not null then
+          update public.learned_words
+             set romanization = v_roman
+           where user_id = v_uid and target_lang = p_target_lang
+             and word = v_item->>'word' and romanization is null;
+        end if;
+        v_new_items := v_new_items + v_inserted;
       end if;
-      insert into public.learned_words (user_id, target_lang, word, meaning, romanization, unit_id)
-      values (v_uid, p_target_lang, v_word->>'word', v_word->>'meaning', v_roman, p_unit_id)
-      on conflict do nothing;
-      get diagnostics v_inserted = row_count;
-      -- Words learned before readings existed get theirs the next time they appear.
-      if v_inserted = 0 and v_roman is not null then
-        update public.learned_words
-           set romanization = v_roman
-         where user_id = v_uid and target_lang = p_target_lang
-           and word = v_word->>'word' and romanization is null;
+    end loop;
+  elsif p_part = 'sentences' then
+    for v_item in select * from jsonb_array_elements(p_sentences) loop
+      if jsonb_typeof(v_item->'text') = 'string' and jsonb_typeof(v_item->'meaning') = 'string'
+         and jsonb_typeof(v_item->'tokens') = 'array'
+         and char_length(v_item->>'text') between 1 and 200
+         and char_length(v_item->>'meaning') between 1 and 200
+         and jsonb_array_length(v_item->'tokens') between 2 and 8 then
+        insert into public.learned_sentences (user_id, target_lang, sentence, meaning, tokens, unit_id)
+        values (v_uid, p_target_lang, v_item->>'text', v_item->>'meaning', v_item->'tokens', p_unit_id)
+        on conflict do nothing;
+        get diagnostics v_inserted = row_count;
+        v_new_items := v_new_items + v_inserted;
       end if;
-      v_new_words := v_new_words + v_inserted;
-    end if;
-  end loop;
+    end loop;
+  end if;
 
-  return query select v_stars, v_points, v_new_words, v_total;
+  return query select v_stars, v_points, v_new_items, v_total;
 end;
 $$;
 
 revoke all on function public.consume_ai_quota(integer) from public, anon;
-revoke all on function public.complete_lesson(text, text, integer, integer, jsonb) from public, anon;
+revoke all on function public.complete_lesson(text, text, text, integer, integer, jsonb, jsonb) from public, anon;
 grant execute on function public.consume_ai_quota(integer) to authenticated;
-grant execute on function public.complete_lesson(text, text, integer, integer, jsonb) to authenticated;
+grant execute on function public.complete_lesson(text, text, text, integer, integer, jsonb, jsonb) to authenticated;
