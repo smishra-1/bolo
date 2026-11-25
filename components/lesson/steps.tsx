@@ -14,6 +14,10 @@ export type StepOutcome = {
   correctAnswer: string;
   learnerAnswer: string | null;
   lines: string[];
+  /** The learner chose not to answer. */
+  skipped?: boolean;
+  /** Wrong tries before finishing (match step). */
+  mistakes?: number;
 };
 
 export type StepProps<S> = {
@@ -115,7 +119,7 @@ export function MatchStepView({ step, target, m, onDone }: StepProps<MatchStep>)
       setMatched(next);
       setWord(null);
       if (next.length === step.pairs.length) {
-        onDone({ correct: mistakes <= 1, question: m.lesson.matchTitle, correctAnswer: lines.join("; "), learnerAnswer: null, lines });
+        onDone({ correct: mistakes <= 1, question: m.lesson.matchTitle, correctAnswer: lines.join("; "), learnerAnswer: null, lines, mistakes });
       }
     } else {
       setMistakes((n) => n + 1);

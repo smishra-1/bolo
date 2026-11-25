@@ -219,6 +219,18 @@ export const en = {
     saving: "Saving your stars…",
     saveError: "We couldn't save your progress.",
   },
+  review: {
+    title: "What went right and what didn't",
+    score: "You got {correct} of {total} right",
+    allRight: "Perfect! Nothing to fix.",
+    right: "Correct",
+    wrong: "Not quite",
+    yourAnswer: "Your answer: {answer}",
+    skipped: "You skipped this one",
+    heardNothing: "We didn't hear anything",
+    correctAnswer: "Correct answer: {answer}",
+    mistakes: "{n} wrong tries",
+  },
   chat: {
     title: "Chat with {name}",
     mode: "{lang} · Easy mode",

@@ -221,6 +221,18 @@ export const hi: Messages = {
     saving: "तुम्हारे सितारे सहेज रहे हैं…",
     saveError: "हम तुम्हारी प्रगति सहेज नहीं पाए।",
   },
+  review: {
+    title: "क्या सही रहा और क्या गलत",
+    score: "{total} में से {correct} सही",
+    allRight: "बहुत बढ़िया! कुछ भी ठीक करने को नहीं।",
+    right: "सही",
+    wrong: "थोड़ा गलत",
+    yourAnswer: "तुम्हारा जवाब: {answer}",
+    skipped: "तुमने इसे छोड़ दिया",
+    heardNothing: "हमें कुछ सुनाई नहीं दिया",
+    correctAnswer: "सही जवाब: {answer}",
+    mistakes: "{n} गलत कोशिशें",
+  },
   chat: {
     title: "{name} से बातचीत",
     mode: "{lang} · आसान मोड",

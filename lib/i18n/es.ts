@@ -221,6 +221,18 @@ export const es: Messages = {
     saving: "Guardando tus estrellas…",
     saveError: "No pudimos guardar tu progreso.",
   },
+  review: {
+    title: "Qué salió bien y qué no",
+    score: "Acertaste {correct} de {total}",
+    allRight: "¡Perfecto! Nada que corregir.",
+    right: "Correcto",
+    wrong: "Casi",
+    yourAnswer: "Tu respuesta: {answer}",
+    skipped: "Te saltaste esta",
+    heardNothing: "No oímos nada",
+    correctAnswer: "Respuesta correcta: {answer}",
+    mistakes: "{n} intentos fallidos",
+  },
   chat: {
     title: "Charla con {name}",
     mode: "{lang} · Modo fácil",

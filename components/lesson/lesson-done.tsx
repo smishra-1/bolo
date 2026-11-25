@@ -8,13 +8,15 @@ import { nextUnit, pointsFor, starsFor } from "@/lib/progress";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { UnitId } from "@/lib/units";
 import { useApp } from "../app-provider";
+import { ReviewList } from "../review";
 import { Button, ButtonLink, Card, Confetti, Mascot, Notice } from "../ui";
+import type { StepOutcome } from "./steps";
 
 type Saved = { stars: number; points: number; new_words: number };
 
-type Props = { unitId: UnitId; content: LessonContent; correct: number; total: number; onAgain: () => void };
+type Props = { unitId: UnitId; content: LessonContent; correct: number; total: number; outcomes: StepOutcome[]; onAgain: () => void };
 
-export function LessonDone({ unitId, content, correct, total, onAgain }: Props) {
+export function LessonDone({ unitId, content, correct, total, outcomes, onAgain }: Props) {
   const { target, m, refreshCourse } = useApp();
   const { streak, reload } = useProgress();
   const [saved, setSaved] = useState<Saved | null>(null);
@@ -83,6 +85,8 @@ export function LessonDone({ unitId, content, correct, total, onAgain }: Props) 
 
       {!saved && !failed && <p className="text-muted" role="status">{m.done.saving}</p>}
       {failed && <Notice tone="error">{m.done.saveError}</Notice>}
+
+      {target && <ReviewList items={outcomes} target={target} m={m} />}
 
       <div className="animate-pop flex w-full items-center gap-3 rounded-3xl border-2 border-ink bg-sun-soft p-4 text-left" style={{ animationDelay: "1200ms" }}>
         <Mascot className="animate-float" />

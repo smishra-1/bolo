@@ -18,7 +18,7 @@ type Phase =
   | { kind: "loading" }
   | { kind: "error"; error: unknown }
   | { kind: "playing"; content: LessonContent; steps: LessonStep[]; round: number }
-  | { kind: "done"; content: LessonContent; correct: number; total: number; round: number };
+  | { kind: "done"; content: LessonContent; correct: number; total: number; round: number; outcomes: StepOutcome[] };
 
 const STEP_ICON: Record<LessonStep["type"], string> = { match: "🧩", choice: "👆", listen: "🔊", fill: "✏️", say: "🎤" };
 
@@ -75,6 +75,7 @@ export function LessonPlayer({ unitId }: { unitId: UnitId }) {
         content={phase.content}
         correct={phase.correct}
         total={phase.total}
+        outcomes={phase.outcomes}
         onAgain={() => setPhase({ kind: "playing", content: phase.content, steps: buildLessonSteps(phase.content), round: phase.round + 1 })}
       />
     );
@@ -85,34 +86,37 @@ export function LessonPlayer({ unitId }: { unitId: UnitId }) {
       key={phase.round}
       steps={phase.steps}
       target={target}
-      onFinish={(correct) => setPhase({ kind: "done", content: phase.content, correct, total: phase.steps.length, round: phase.round })}
+      onFinish={(correct, outcomes) => setPhase({ kind: "done", content: phase.content, correct, total: phase.steps.length, round: phase.round, outcomes })}
     />
   );
 }
 
-function Run({ steps, target, onFinish }: { steps: LessonStep[]; target: TargetLang; onFinish: (correct: number) => void }) {
+function Run({ steps, target, onFinish }: { steps: LessonStep[]; target: TargetLang; onFinish: (correct: number, outcomes: StepOutcome[]) => void }) {
   const { native, m } = useApp();
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [outcome, setOutcome] = useState<StepOutcome | null>(null);
+  const [history, setHistory] = useState<StepOutcome[]>([]);
 
   const step = steps[index];
   const upcoming = steps.slice(index + 1, index + 3);
 
   const advance = useCallback(
-    (wasCorrect: boolean) => {
-      const total = correct + (wasCorrect ? 1 : 0);
+    (result: StepOutcome) => {
+      const total = correct + (result.correct ? 1 : 0);
+      const all = [...history, result];
       setOutcome(null);
       setCorrect(total);
-      if (index + 1 >= steps.length) onFinish(total);
+      setHistory(all);
+      if (index + 1 >= steps.length) onFinish(total, all);
       else setIndex(index + 1);
     },
-    [correct, index, steps.length, onFinish],
+    [correct, history, index, steps.length, onFinish],
   );
 
   const onDone = (result: StepOutcome) => {
     // Speaking has its own inline feedback, so it skips the popup.
-    if (step.type === "say") advance(result.correct);
+    if (step.type === "say") advance(result);
     else setOutcome(result);
   };
 
@@ -150,7 +154,7 @@ function Run({ steps, target, onFinish }: { steps: LessonStep[]; target: TargetL
         )}
       </div>
 
-      {outcome && <FeedbackSheet outcome={outcome} target={target} native={native} m={m} onNext={() => advance(outcome.correct)} />}
+      {outcome && <FeedbackSheet outcome={outcome} target={target} native={native} m={m} onNext={() => advance(outcome)} />}
     </div>
   );
 }

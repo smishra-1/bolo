@@ -14,9 +14,12 @@ import {
 import type { NativeLang, TargetLang } from "@/lib/languages";
 import { useApp } from "../app-provider";
 import { Logo } from "../app-shell";
+import { FeedbackSheet } from "../lesson/feedback-sheet";
+import type { StepOutcome } from "../lesson/steps";
+import { ReviewList } from "../review";
 import { Button, Card, Confetti, Notice, ProgressBar } from "../ui";
 
-type Pending = { picked: number | null; question: PlacementQuestion };
+type Pending = { picked: number | null; question: PlacementQuestion; outcome: StepOutcome };
 
 export function PlacementCheck() {
   const { target, native, m, setLevel } = useApp();
@@ -27,6 +30,7 @@ export function PlacementCheck() {
 function Check({ target, native, m, setLevel }: { target: TargetLang; native: NativeLang; m: Messages; setLevel: (level: number) => Promise<void> }) {
   const router = useRouter();
   const [answers, setAnswers] = useState<PlacementAnswer[]>([]);
+  const [outcomes, setOutcomes] = useState<StepOutcome[]>([]);
   const [question, setQuestion] = useState(() => buildQuestion(target, native, 1, []));
   const [used, setUsed] = useState<string[]>(() => [question.conceptId]);
   const [pending, setPending] = useState<Pending | null>(null);
@@ -39,20 +43,34 @@ function Check({ target, native, m, setLevel }: { target: TargetLang; native: Na
 
   function answer(picked: number | null) {
     if (pending) return;
-    setPending({ picked, question });
     const correct = picked === question.answerIndex;
-    const next = [...answers, { difficulty: question.difficulty, correct }];
+    const right = question.options[question.answerIndex];
+    const chosen = picked === null ? null : question.options[picked];
+    const show = (t: { text: string; roman?: string }) => (t.roman ? `${t.text} (${t.roman})` : t.text);
+    const outcome: StepOutcome = {
+      correct,
+      question: fmt(m.check.howDoYouSay, { word: question.prompt, lang: m.languages[target] }),
+      correctAnswer: show(right),
+      learnerAnswer: chosen ? show(chosen) : null,
+      skipped: picked === null,
+      lines: [`“${right.text}” ${fmt(m.lesson.means, { meaning: question.prompt })}`],
+    };
+    // The feedback popup explains the answer; the next question waits for "Next".
+    setPending({ picked, question, outcome });
+  }
 
-    // Show the right answer briefly before moving on.
-    setTimeout(() => {
-      setAnswers(next);
-      setPending(null);
-      if (next.length < PLACEMENT_LENGTH) {
-        const q = buildQuestion(target, native, nextDifficulty(question.difficulty, correct), used);
-        setUsed((u) => [...u, q.conceptId]);
-        setQuestion(q);
-      }
-    }, 900);
+  function next() {
+    if (!pending) return;
+    const correct = pending.outcome.correct;
+    const nextAnswers = [...answers, { difficulty: pending.question.difficulty, correct }];
+    setAnswers(nextAnswers);
+    setOutcomes((o) => [...o, pending.outcome]);
+    setPending(null);
+    if (nextAnswers.length < PLACEMENT_LENGTH) {
+      const q = buildQuestion(target, native, nextDifficulty(pending.question.difficulty, correct), used);
+      setUsed((u) => [...u, q.conceptId]);
+      setQuestion(q);
+    }
   }
 
   async function save(chosen: number) {
@@ -92,6 +110,7 @@ function Check({ target, native, m, setLevel }: { target: TargetLang; native: Na
           </span>
           <h1 className="font-display text-3xl font-bold">{m.check.doneTitle}</h1>
           <p className="text-lg">{fmt(m.check.doneBody, { level: levelName })}</p>
+          <ReviewList items={outcomes} target={target} m={m} />
           <Button onClick={() => save(level)} disabled={saving}>
             {saving ? m.common.loading : m.check.seeMap} →
           </Button>
@@ -128,6 +147,8 @@ function Check({ target, native, m, setLevel }: { target: TargetLang; native: Na
           </button>
         </section>
       )}
+
+      {pending && <FeedbackSheet outcome={pending.outcome} target={target} native={native} m={m} onNext={next} />}
 
       <div className="mt-auto rounded-2xl border-2 border-ink bg-sun-soft px-4 py-3 text-center text-sm">
         <span aria-hidden>📈 </span>

@@ -47,6 +47,7 @@ export function SayStepView({ step, target, m, onDone }: { step: SayStep; target
       correctAnswer: step.word,
       learnerAnswer: heard,
       lines: [],
+      skipped: heard === null,
     });
   }
 
