@@ -4,7 +4,7 @@ import { chatModel } from "@/lib/ai/model";
 import { lessonPrompt } from "@/lib/ai/prompts";
 import { apiError, chargeAiQuota, readJson, requireLearner } from "@/lib/api";
 import { NATIVE_LANGS, TARGET_LANGS } from "@/lib/languages";
-import { lessonContentSchema, normalizeLessonContent, type LessonContent } from "@/lib/lesson";
+import { lessonContentSchema, missingReadings, normalizeLessonContent, type LessonContent } from "@/lib/lesson";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { UNITS, getUnit } from "@/lib/units";
 
@@ -39,7 +39,8 @@ export async function POST(request: Request) {
     const { data } = await cache.from("lessons").select("content").match(key).maybeSingle();
     // Rows saved before sentences were built from tiles no longer match the schema; they are replaced below.
     const cached = data ? lessonContentSchema.safeParse(data.content) : null;
-    if (cached?.success) return Response.json({ lesson: cached.data });
+    // Lessons missing readings are made again, since every word should show its pronunciation.
+    if (cached?.success && !missingReadings(cached.data)) return Response.json({ lesson: cached.data });
   }
 
   const stop = await chargeAiQuota(learner.supabase);

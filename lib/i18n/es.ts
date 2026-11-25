@@ -202,6 +202,7 @@ export const es: Messages = {
     micBlocked: "El micrófono está bloqueado. Puedes saltar esta.",
     yay: "¡Bien! ¡Correcto!",
     oops: "Uy, casi",
+    matchedWithMistakes: "Los emparejaste todos, pero con {n} intentos fallidos. Estas son las parejas:",
     answerIs: "La respuesta es “{answer}”.",
     whyTip: "¿Por qué? Un consejo de IA",
     thinking: "Pensando…",

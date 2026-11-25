@@ -65,7 +65,12 @@ export function FeedbackSheet({ outcome, target, native, m, onNext }: Props) {
           </h2>
         </div>
         <div className="flex flex-col gap-4 p-5 text-center">
-          {!yay && <p className="font-semibold">{fmt(m.lesson.answerIs, { answer: outcome.correctAnswer })}</p>}
+          {!yay &&
+            (outcome.mistakes !== undefined ? (
+              <p className="font-semibold">{fmt(m.lesson.matchedWithMistakes, { n: outcome.mistakes })}</p>
+            ) : (
+              <p className="font-semibold">{fmt(m.lesson.answerIs, { answer: outcome.correctAnswer })}</p>
+            ))}
           {outcome.lines.length > 0 && (
             <ul className="text-lg" lang={target}>
               {outcome.lines.map((line) => (

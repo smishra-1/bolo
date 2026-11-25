@@ -200,6 +200,7 @@ export const en = {
     micBlocked: "The microphone is blocked. You can skip this one.",
     yay: "Yay! That's right!",
     oops: "Oops, not quite",
+    matchedWithMistakes: "You matched them all, but with {n} wrong tries. Here are the pairs:",
     answerIs: "The answer is “{answer}”.",
     whyTip: "Why? A simple AI tip",
     thinking: "Thinking…",

@@ -202,6 +202,7 @@ export const hi: Messages = {
     micBlocked: "माइक्रोफ़ोन बंद है। तुम इसे छोड़ सकते हो।",
     yay: "वाह! बिल्कुल सही!",
     oops: "उफ़, थोड़ा सा गलत",
+    matchedWithMistakes: "तुमने सब मिला दिए, पर {n} गलत कोशिशों के साथ। ये रहीं जोड़ियाँ:",
     answerIs: "सही जवाब है “{answer}”।",
     whyTip: "क्यों? AI का आसान सुझाव",
     thinking: "सोच रहा हूँ…",

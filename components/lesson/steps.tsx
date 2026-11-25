@@ -125,7 +125,9 @@ export function MatchStepView({ step, target, m, onDone }: StepProps<MatchStep>)
   function pickMeaning(meaning: string) {
     if (!word) return;
     if (meaningOf(word) === meaning) {
-      const next = [...matched, word];
+      let next = [...matched, word];
+      // With one pair left there is nothing to choose, so match it for the learner.
+      if (next.length === step.pairs.length - 1) next = step.pairs.map((p) => p.word);
       setMatched(next);
       setWord(null);
       if (next.length === step.pairs.length) {

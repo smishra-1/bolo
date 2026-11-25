@@ -81,6 +81,17 @@ export function normalizeLessonContent(raw: LessonContent): LessonContent | null
   return { title: clean(raw.title, 60) || words[0].meaning, words, sentences };
 }
 
+const LATIN = /\p{Script=Latin}/u;
+
+/**
+ * True when a word or tile in a non-Latin script has no reading, so the
+ * learner would see it without its pronunciation in English letters.
+ */
+export function missingReadings(content: LessonContent): boolean {
+  const lacks = (text: string, romanization: string | null) => !romanization && !LATIN.test(text);
+  return content.words.some((w) => lacks(w.word, w.romanization)) || content.sentences.some((s) => s.tokens.some((t) => lacks(t.text, t.romanization)));
+}
+
 /** Shows a word with its reading, like "नमस्ते (namaste)". */
 export function withReading(word: string, romanization?: string | null): string {
   return romanization && romanization.toLocaleLowerCase() !== word.toLocaleLowerCase() ? `${word} (${romanization})` : word;

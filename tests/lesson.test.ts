@@ -5,6 +5,7 @@ import {
   buildWordsLesson,
   isScored,
   joinTokens,
+  missingReadings,
   normalizeLessonContent,
   sentenceReading,
   withReading,
@@ -142,5 +143,13 @@ describe("readings", () => {
   it("joins tokens with spaces, or without for scripts that have none", () => {
     expect(joinTokens([tok("El"), tok("gato")], "El gato")).toBe("El gato");
     expect(joinTokens([tok("私は"), tok("猫")], "私は猫です")).toBe("私は猫");
+  });
+
+  it("spots non-Latin words or tiles without a reading", () => {
+    const base = { title: "t", words: [{ word: "நன்றி", romanization: "nandri", meaning: "thanks", emoji: "🙏" }], sentences: [{ text: "நான் நீ", tokens: [tok("நான்", "naan"), tok("நீ", "nee")], meaning: "me you" }] };
+    expect(missingReadings(base)).toBe(false);
+    expect(missingReadings({ ...base, words: [{ ...base.words[0], romanization: null }] })).toBe(true);
+    expect(missingReadings({ ...base, sentences: [{ ...base.sentences[0], tokens: [tok("நான்", "naan"), tok("நீ")] }] })).toBe(true);
+    expect(missingReadings({ ...base, words: [{ word: "gato", romanization: null, meaning: "cat", emoji: "🐱" }] })).toBe(false);
   });
 });
