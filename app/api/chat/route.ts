@@ -16,8 +16,9 @@ const bodySchema = z.object({
 
 const replySchema = z.object({
   reply: z.string(),
+  romanization: z.string().nullable(),
   translation: z.string(),
-  suggestions: z.array(z.object({ text: z.string(), translation: z.string() })),
+  suggestions: z.array(z.object({ text: z.string(), romanization: z.string().nullable(), translation: z.string() })),
 });
 
 export async function POST(request: Request) {
@@ -40,8 +41,13 @@ export async function POST(request: Request) {
     });
     return Response.json({
       reply: output.reply.trim().slice(0, 500),
+      romanization: output.romanization?.trim().slice(0, 500) || null,
       translation: output.translation.trim().slice(0, 500),
-      suggestions: output.suggestions.slice(0, 3).map((s) => ({ text: s.text.trim().slice(0, 200), translation: s.translation.trim().slice(0, 200) })),
+      suggestions: output.suggestions.slice(0, 3).map((s) => ({
+        text: s.text.trim().slice(0, 200),
+        romanization: s.romanization?.trim().slice(0, 200) || null,
+        translation: s.translation.trim().slice(0, 200),
+      })),
     });
   } catch (error) {
     console.error("chat failed", error);

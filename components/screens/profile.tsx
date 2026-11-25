@@ -12,7 +12,7 @@ import { useApp } from "../app-provider";
 import { Avatar, BottomNav, TopBar } from "../app-shell";
 import { Button, Card, Notice } from "../ui";
 
-type Word = { word: string; meaning: string };
+type Word = { word: string; meaning: string; romanization?: string | null };
 type Words = { list: Word[]; count: number };
 
 const WORDS_SHOWN = 24;
@@ -34,13 +34,21 @@ function ProfileView({ target }: { target: TargetLang }) {
     const supabase = getSupabaseBrowserClient();
     let cancelled = false;
     // RLS limits both queries to the signed-in learner's rows.
+    const loadWords = async () => {
+      const query = (columns: string) =>
+        supabase
+          .from("learned_words")
+          .select(columns, { count: "exact" })
+          .eq("target_lang", target)
+          .order("first_seen_at", { ascending: false })
+          .limit(WORDS_SHOWN)
+          .overrideTypes<Word[], { merge: false }>();
+      const withReadings = await query("word, meaning, romanization");
+      // Until migration 004 has run there is no readings column; show words without it.
+      return withReadings.error ? query("word, meaning") : withReadings;
+    };
     Promise.all([
-      supabase
-        .from("learned_words")
-        .select("word, meaning", { count: "exact" })
-        .eq("target_lang", target)
-        .order("first_seen_at", { ascending: false })
-        .limit(WORDS_SHOWN),
+      loadWords(),
       supabase.from("profiles").select("created_at").maybeSingle(),
     ])
       .then(([w, p]) => {
@@ -144,6 +152,7 @@ function ProfileView({ target }: { target: TargetLang }) {
                   >
                     <span className="flex-1">
                       <span lang={target} className="block font-display text-lg font-semibold">{w.word}</span>
+                      {w.romanization && <span className="block text-sm text-muted">{w.romanization}</span>}
                       <span className="block text-sm text-muted">{w.meaning}</span>
                     </span>
                     <span aria-hidden>🔊</span>

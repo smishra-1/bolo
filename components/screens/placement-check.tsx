@@ -53,7 +53,7 @@ function Check({ target, native, m, setLevel }: { target: TargetLang; native: Na
       correctAnswer: show(right),
       learnerAnswer: chosen ? show(chosen) : null,
       skipped: picked === null,
-      lines: [`“${right.text}” ${fmt(m.lesson.means, { meaning: question.prompt })}`],
+      lines: [`“${show(right)}” ${fmt(m.lesson.means, { meaning: question.prompt })}`],
     };
     // The feedback popup explains the answer; the next question waits for "Next".
     setPending({ picked, question, outcome });

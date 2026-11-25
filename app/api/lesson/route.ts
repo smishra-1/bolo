@@ -4,7 +4,7 @@ import { chatModel } from "@/lib/ai/model";
 import { lessonPrompt } from "@/lib/ai/prompts";
 import { apiError, chargeAiQuota, readJson, requireLearner } from "@/lib/api";
 import { NATIVE_LANGS, TARGET_LANGS } from "@/lib/languages";
-import { lessonContentSchema, normalizeLessonContent, type LessonContent } from "@/lib/lesson";
+import { lessonContentSchema, normalizeLessonContent, parseCachedLesson, type LessonContent } from "@/lib/lesson";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { UNITS, getUnit } from "@/lib/units";
 
@@ -37,8 +37,8 @@ export async function POST(request: Request) {
   const cache = lessonCache();
   if (cache) {
     const { data } = await cache.from("lessons").select("content").match(key).maybeSingle();
-    const cached = data ? lessonContentSchema.safeParse(data.content) : null;
-    if (cached?.success) return Response.json({ lesson: cached.data });
+    const cached = data ? parseCachedLesson(data.content) : null;
+    if (cached) return Response.json({ lesson: cached });
   }
 
   const stop = await chargeAiQuota(learner.supabase);

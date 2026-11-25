@@ -19,6 +19,7 @@ export const lessonContentSchema = z.object({
         text: z.string().describe("Very short sentence in the target language that contains `blank`"),
         blank: z.string().describe("One of the vocabulary words, exactly as it appears in `text`"),
         meaning: z.string().describe("The sentence's meaning in the learner's native language"),
+        romanization: z.string().nullable().describe("Latin-letter reading of the whole sentence for non-Latin scripts, else null"),
       }),
     )
     .describe("Exactly 2 example sentences"),
@@ -52,7 +53,12 @@ export function normalizeLessonContent(raw: LessonContent): LessonContent | null
   }
 
   const sentences = raw.sentences
-    .map((s) => ({ text: clean(s.text, MAX_SENTENCE), blank: clean(s.blank, MAX_WORD), meaning: clean(s.meaning, MAX_SENTENCE) }))
+    .map((s) => ({
+      text: clean(s.text, MAX_SENTENCE),
+      blank: clean(s.blank, MAX_WORD),
+      meaning: clean(s.meaning, MAX_SENTENCE),
+      romanization: s.romanization ? clean(s.romanization, MAX_SENTENCE) || null : null,
+    }))
     .filter((s) => s.blank && s.meaning && s.text.includes(s.blank))
     .slice(0, 2);
 
@@ -60,10 +66,23 @@ export function normalizeLessonContent(raw: LessonContent): LessonContent | null
   return { title: clean(raw.title, 60) || words[0].meaning, words, sentences };
 }
 
-export type MatchStep = { type: "match"; pairs: { word: string; meaning: string }[]; meanings: string[] };
-export type ChoiceStep = { type: "choice"; meaning: string; emoji: string; options: string[]; answer: string };
-export type ListenStep = { type: "listen"; word: string; options: { meaning: string; emoji: string }[]; answer: string };
-export type FillStep = { type: "fill"; before: string; after: string; meaning: string; options: string[]; answer: string };
+/** Latin-letter readings by word, for the words that have one. */
+export type Romans = Record<string, string>;
+
+export type MatchStep = { type: "match"; pairs: { word: string; meaning: string }[]; meanings: string[]; romans: Romans };
+export type ChoiceStep = { type: "choice"; meaning: string; emoji: string; options: string[]; answer: string; romans: Romans };
+export type ListenStep = { type: "listen"; word: string; romanization: string | null; options: { meaning: string; emoji: string }[]; answer: string };
+export type FillStep = {
+  type: "fill";
+  before: string;
+  after: string;
+  meaning: string;
+  options: string[];
+  answer: string;
+  romans: Romans;
+  /** Reading of the finished sentence. */
+  romanization: string | null;
+};
 export type SayStep = { type: "say"; word: string; romanization: string | null; meaning: string };
 export type LessonStep = MatchStep | ChoiceStep | ListenStep | FillStep | SayStep;
 
@@ -83,6 +102,24 @@ function withDistractors<T>(answer: T, pool: T[], count: number, random: () => n
 }
 
 /**
+ * Reads lesson content saved before sentences had a reading: the missing field
+ * becomes null instead of making the whole lesson unusable.
+ */
+export function parseCachedLesson(content: unknown): LessonContent | null {
+  if (content && typeof content === "object" && Array.isArray((content as { sentences?: unknown }).sentences)) {
+    const c = content as { sentences: Record<string, unknown>[] };
+    content = { ...c, sentences: c.sentences.map((s) => ({ romanization: null, ...s })) };
+  }
+  const parsed = lessonContentSchema.safeParse(content);
+  return parsed.success ? parsed.data : null;
+}
+
+/** Shows a word with its reading, like "नमस्ते (namaste)". */
+export function withReading(word: string, romanization?: string | null): string {
+  return romanization && romanization.toLocaleLowerCase() !== word.toLocaleLowerCase() ? `${word} (${romanization})` : word;
+}
+
+/**
  * Five steps, one of each kind: match the words, pick the word, listen and
  * pick, fill the blank, say it.
  */
@@ -93,6 +130,7 @@ export function buildLessonSteps(content: LessonContent, random: () => number = 
   const listenWord = words[5] ?? words[2];
   const sayWord = words[0];
   const sentence = content.sentences[0];
+  const romans: Romans = Object.fromEntries(words.filter((w) => w.romanization).map((w) => [w.word, w.romanization as string]));
   const [before, ...rest] = sentence.text.split(sentence.blank);
 
   return [
@@ -100,6 +138,7 @@ export function buildLessonSteps(content: LessonContent, random: () => number = 
       type: "match",
       pairs: matchWords.map(({ word, meaning }) => ({ word, meaning })),
       meanings: shuffle(matchWords.map((w) => w.meaning), random),
+      romans,
     },
     {
       type: "choice",
@@ -107,10 +146,12 @@ export function buildLessonSteps(content: LessonContent, random: () => number = 
       emoji: choiceWord.emoji,
       options: withDistractors(choiceWord, words, 2, random).map((w) => w.word),
       answer: choiceWord.word,
+      romans,
     },
     {
       type: "listen",
       word: listenWord.word,
+      romanization: listenWord.romanization,
       options: withDistractors(listenWord, words, 2, random).map(({ meaning, emoji }) => ({ meaning, emoji })),
       answer: listenWord.meaning,
     },
@@ -121,6 +162,8 @@ export function buildLessonSteps(content: LessonContent, random: () => number = 
       meaning: sentence.meaning,
       options: withDistractors(sentence.blank, words.map((w) => w.word).concat(sentence.blank), 2, random),
       answer: sentence.blank,
+      romans,
+      romanization: sentence.romanization,
     },
     { type: "say", word: sayWord.word, romanization: sayWord.romanization, meaning: sayWord.meaning },
   ];

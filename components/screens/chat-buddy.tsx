@@ -10,9 +10,9 @@ import { useApp } from "../app-provider";
 import { BottomNav, TopBar } from "../app-shell";
 import { Button, IconButton, Mascot, Notice } from "../ui";
 
-type Message = { role: "user" | "assistant"; content: string; translation?: string };
-type Suggestion = { text: string; translation: string };
-type ChatReply = { reply: string; translation: string; suggestions: Suggestion[] };
+type Message = { role: "user" | "assistant"; content: string; romanization?: string | null; translation?: string };
+type Suggestion = { text: string; romanization: string | null; translation: string };
+type ChatReply = { reply: string; romanization: string | null; translation: string; suggestions: Suggestion[] };
 
 const MAX_HISTORY = 20;
 const MAX_LENGTH = 500;
@@ -49,7 +49,7 @@ function Chat({ target }: { target: TargetLang }) {
           level,
           messages: history.slice(-MAX_HISTORY).map(({ role, content }) => ({ role, content })),
         });
-        setMessages([...history, { role: "assistant", content: reply.reply, translation: reply.translation }]);
+        setMessages([...history, { role: "assistant", content: reply.reply, romanization: reply.romanization, translation: reply.translation }]);
         setSuggestions(reply.suggestions);
       } catch (e) {
         setError(errorMessage(e, m));
@@ -121,6 +121,7 @@ function Chat({ target }: { target: TargetLang }) {
           className="press group flex flex-col rounded-2xl border-2 border-ink bg-white p-3 text-left hover:bg-sky-50"
         >
           <span lang={target} className="font-semibold">{s.text}</span>
+          {s.romanization && <span className="text-sm text-muted">{s.romanization}</span>}
           <span className="text-sm text-muted">{s.translation}</span>
           <span aria-hidden className="mt-2 self-end rounded-lg bg-brand px-3 py-1 text-sm font-semibold text-white group-hover:bg-brand-dark">
             {m.chat.useIt} ↵
@@ -155,6 +156,7 @@ function Chat({ target }: { target: TargetLang }) {
                   <div className="max-w-[80%]">
                     <div className="chunky rounded-2xl rounded-tl-sm bg-white px-4 py-3">
                       <p lang={target} className="text-lg">{msg.content}</p>
+                      {msg.romanization && <p className="text-sm text-muted">{msg.romanization}</p>}
                     </div>
                     {shown.has(i) && msg.translation && (
                       <p className="mt-1 rounded-xl border-2 border-dashed border-ink bg-sun-soft px-3 py-1 text-sm">{msg.translation}</p>

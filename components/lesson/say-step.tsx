@@ -6,7 +6,7 @@ import { errorMessage, transcribeAudio } from "@/lib/client/api";
 import { speak } from "@/lib/client/speech";
 import { fmt, type Messages } from "@/lib/i18n";
 import type { TargetLang } from "@/lib/languages";
-import type { SayStep } from "@/lib/lesson";
+import { withReading, type SayStep } from "@/lib/lesson";
 import { comparePronunciation, type PronunciationResult } from "@/lib/pronunciation";
 import { Button, Notice } from "../ui";
 import type { StepOutcome } from "./steps";
@@ -44,7 +44,7 @@ export function SayStepView({ step, target, m, onDone }: { step: SayStep; target
     onDone({
       correct: best >= PASS,
       question: m.lesson.sayTitle,
-      correctAnswer: step.word,
+      correctAnswer: withReading(step.word, step.romanization),
       learnerAnswer: heard,
       lines: [],
       skipped: heard === null,

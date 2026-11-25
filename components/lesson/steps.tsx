@@ -3,7 +3,7 @@
 import { useEffect, useEffectEvent, useState, type ReactNode } from "react";
 import { fmt, type Messages } from "@/lib/i18n";
 import type { TargetLang } from "@/lib/languages";
-import type { ChoiceStep, FillStep, ListenStep, MatchStep } from "@/lib/lesson";
+import { withReading, type ChoiceStep, type FillStep, type ListenStep, type MatchStep } from "@/lib/lesson";
 import { speak } from "@/lib/client/speech";
 import { Button, Notice } from "../ui";
 
@@ -103,6 +103,16 @@ function OptionButton({ selected, onClick, children, tone, shortcut }: OptionPro
 
 const quote = (s: string) => `“${s}”`;
 
+/** A word with its English-letter reading underneath, when it has one. */
+function Reading({ word, roman }: { word: string; roman?: string | null }) {
+  return (
+    <>
+      {word}
+      {roman && <span className="font-sans text-sm font-normal text-muted">{roman}</span>}
+    </>
+  );
+}
+
 export function MatchStepView({ step, target, m, onDone }: StepProps<MatchStep>) {
   const [word, setWord] = useState<string | null>(null);
   const [matched, setMatched] = useState<string[]>([]);
@@ -110,7 +120,7 @@ export function MatchStepView({ step, target, m, onDone }: StepProps<MatchStep>)
   const [mistakes, setMistakes] = useState(0);
 
   const meaningOf = (w: string) => step.pairs.find((p) => p.word === w)?.meaning;
-  const lines = step.pairs.map((p) => `${quote(p.word)} ${fmt(m.lesson.means, { meaning: p.meaning })}`);
+  const lines = step.pairs.map((p) => `${quote(withReading(p.word, step.romans[p.word]))} ${fmt(m.lesson.means, { meaning: p.meaning })}`);
 
   function pickMeaning(meaning: string) {
     if (!word) return;
@@ -149,7 +159,7 @@ export function MatchStepView({ step, target, m, onDone }: StepProps<MatchStep>)
                   speak(w, target);
                 }}
               >
-                {w}
+                <Reading word={w} roman={step.romans[w]} />
               </OptionButton>
             </li>
           ))}
@@ -191,9 +201,9 @@ export function ChoiceStepView({ step, target, m, onDone }: StepProps<ChoiceStep
     onDone({
       correct: picked === step.answer,
       question,
-      correctAnswer: step.answer,
-      learnerAnswer: picked,
-      lines: [`${quote(step.answer)} ${fmt(m.lesson.means, { meaning: step.meaning })}`],
+      correctAnswer: withReading(step.answer, step.romans[step.answer]),
+      learnerAnswer: withReading(picked, step.romans[picked]),
+      lines: [`${quote(withReading(step.answer, step.romans[step.answer]))} ${fmt(m.lesson.means, { meaning: step.meaning })}`],
     });
   };
   useStepKeys(step.options.length, (i) => pick(step.options[i]), check);
@@ -212,7 +222,7 @@ export function ChoiceStepView({ step, target, m, onDone }: StepProps<ChoiceStep
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {step.options.map((option, i) => (
           <OptionButton key={option} shortcut={i + 1} selected={picked === option} onClick={() => pick(option)}>
-            {option}
+            <Reading word={option} roman={step.romans[option]} />
           </OptionButton>
         ))}
       </div>
@@ -227,10 +237,10 @@ export function ListenStepView({ step, target, m, onDone }: StepProps<ListenStep
     if (!picked) return;
     onDone({
       correct: picked === step.answer,
-      question: `${m.lesson.listenTitle}: ${quote(step.word)}`,
+      question: `${m.lesson.listenTitle}: ${quote(withReading(step.word, step.romanization))}`,
       correctAnswer: step.answer,
       learnerAnswer: picked,
-      lines: [`${quote(step.word)} ${fmt(m.lesson.means, { meaning: step.answer })}`],
+      lines: [`${quote(withReading(step.word, step.romanization))} ${fmt(m.lesson.means, { meaning: step.answer })}`],
     });
   };
   useStepKeys(step.options.length, (i) => setPicked(step.options[i].meaning), check);
@@ -271,9 +281,9 @@ export function FillStepView({ step, target, m, onDone }: StepProps<FillStep>) {
     onDone({
       correct: picked === step.answer,
       question: `${m.lesson.fillTitle}: ${step.before}___${step.after}`,
-      correctAnswer: step.answer,
-      learnerAnswer: picked,
-      lines: [`${quote(full)} ${fmt(m.lesson.means, { meaning: step.meaning })}`],
+      correctAnswer: withReading(step.answer, step.romans[step.answer]),
+      learnerAnswer: picked ? withReading(picked, step.romans[picked]) : null,
+      lines: [`${quote(withReading(full, step.romanization))} ${fmt(m.lesson.means, { meaning: step.meaning })}`],
     });
   };
   useStepKeys(step.options.length, (i) => setPicked(step.options[i]), check);
@@ -289,11 +299,12 @@ export function FillStepView({ step, target, m, onDone }: StepProps<FillStep>) {
         <span className={`mx-1 inline-block min-w-20 border-b-4 px-2 ${picked ? "border-brand text-brand" : "border-ink"}`}>{picked ?? " "}</span>
         {step.after}
       </p>
+      {step.romanization && <p className="text-center text-muted">{step.romanization}</p>}
       <div className="flex flex-wrap justify-center gap-3">
         {step.options.map((option, i) => (
           <div key={option} className="min-w-28">
             <OptionButton shortcut={i + 1} selected={picked === option} onClick={() => setPicked(option)}>
-              {option}
+              <Reading word={option} roman={step.romans[option]} />
             </OptionButton>
           </div>
         ))}

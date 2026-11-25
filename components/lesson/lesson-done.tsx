@@ -34,7 +34,7 @@ export function LessonDone({ unitId, content, correct, total, outcomes, onAgain 
           p_unit_id: unitId,
           p_correct: correct,
           p_total: total,
-          p_words: content.words.map(({ word, meaning }) => ({ word, meaning })),
+          p_words: content.words.map(({ word, meaning, romanization }) => ({ word, meaning, romanization })),
         })
         .single<Saved>();
       if (error || !data) throw error ?? new Error("No result");

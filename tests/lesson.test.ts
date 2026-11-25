@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLessonSteps, normalizeLessonContent, type LessonContent } from "@/lib/lesson";
+import { buildLessonSteps, normalizeLessonContent, parseCachedLesson, withReading, type LessonContent } from "@/lib/lesson";
 
 const raw: LessonContent = {
   title: " Colours ",
@@ -14,8 +14,8 @@ const raw: LessonContent = {
     { word: "gris", romanization: null, meaning: "grey", emoji: "🩶" },
   ],
   sentences: [
-    { text: "El cielo es azul", blank: "azul", meaning: "The sky is blue" },
-    { text: "La rosa es roja", blank: "rojo", meaning: "The rose is red" },
+    { text: "El cielo es azul", blank: "azul", meaning: "The sky is blue", romanization: null },
+    { text: "La rosa es roja", blank: "rojo", meaning: "The rose is red", romanization: null },
   ],
 };
 
@@ -60,5 +60,40 @@ describe("buildLessonSteps", () => {
   it("splits the sentence around the blank", () => {
     const fill = buildLessonSteps(content).find((s) => s.type === "fill")!;
     expect(fill).toMatchObject({ before: "El cielo es ", after: "", answer: "azul" });
+  });
+});
+
+describe("readings", () => {
+  const tamil: LessonContent = {
+    title: "Hello",
+    words: [
+      { word: "வணக்கம்", romanization: "vanakkam", meaning: "hello", emoji: "👋" },
+      { word: "நன்றி", romanization: "nandri", meaning: "thank you", emoji: "🙏" },
+      { word: "தயவு செய்து", romanization: "thayavu seithu", meaning: "please", emoji: "🙂" },
+      { word: "பிரியாவிடை", romanization: "piriyaavidai", meaning: "goodbye", emoji: "👋" },
+      { word: "ஆம்", romanization: "aam", meaning: "yes", emoji: "✅" },
+      { word: "இல்லை", romanization: "illai", meaning: "no", emoji: "❌" },
+    ],
+    sentences: [{ text: "வணக்கம்", blank: "வணக்கம்", meaning: "Hello", romanization: "vanakkam" }],
+  };
+
+  it("shows a word with its reading, but not when they match", () => {
+    expect(withReading("நன்றி", "nandri")).toBe("நன்றி (nandri)");
+    expect(withReading("gato", "gato")).toBe("gato");
+    expect(withReading("gato", null)).toBe("gato");
+  });
+
+  it("gives steps the reading of every word", () => {
+    const [match, choice, listen, fill] = buildLessonSteps(tamil);
+    expect(match.type === "match" && match.romans["நன்றி"]).toBe("nandri");
+    expect(choice.type === "choice" && Object.keys(choice.romans)).toHaveLength(6);
+    expect(listen.type === "listen" && listen.romanization).toBeTruthy();
+    expect(fill.type === "fill" && fill.romanization).toBe("vanakkam");
+  });
+
+  it("still reads lessons cached before sentences had a reading", () => {
+    const old = { ...tamil, sentences: [{ text: "வணக்கம்", blank: "வணக்கம்", meaning: "Hello" }] };
+    expect(parseCachedLesson(old)?.sentences[0].romanization).toBeNull();
+    expect(parseCachedLesson({ nonsense: true })).toBeNull();
   });
 });

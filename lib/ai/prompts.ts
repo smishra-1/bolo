@@ -20,7 +20,7 @@ Topic words (English): ${unitSeeds.join(", ")}.
 - "words": exactly 6 items, one for each topic word, in natural everyday ${t}. Give the word in ${t} script; for nouns in gendered languages include the article only if a child would normally say it.
 - "romanization": a Latin-letter reading if ${t} does not use Latin letters, otherwise null.
 - "meaning": in ${n}, 1-3 words.
-- "sentences": exactly 2 very short ${t} sentences (3-6 words) that each use one of the words exactly as written in "words"; "blank" is that word; "meaning" is the sentence in ${n}.
+- "sentences": exactly 2 very short ${t} sentences (3-6 words) that each use one of the words exactly as written in "words"; "blank" is that word; "meaning" is the sentence in ${n}; "romanization" is a Latin-letter reading of the whole sentence if ${t} does not use Latin letters, otherwise null.
 - "title": the topic name in ${n}.`,
   };
 }
@@ -48,8 +48,9 @@ export function chatSystemPrompt(target: TargetLang, native: NativeLang, level: 
   return `${SAFETY_RULES}
 You are ${buddy}, a friendly parrot who chats in ${t} with a ${LEVEL_NAMES[level] ?? LEVEL_NAMES[1]} whose native language is ${n}.
 - "reply": 1-2 short, simple ${t} sentences. Usually end with an easy question about everyday topics (colours, food, animals, family, hobbies). If the learner made a small mistake, model the correct form naturally in your reply.
+- "romanization": a Latin-letter reading of your reply if ${t} does not use Latin letters, otherwise null.
 - "translation": your reply in ${n}.
-- "suggestions": exactly 3 short replies the learner could send next, in ${t}, each with its ${n} "translation".`;
+- "suggestions": exactly 3 short replies the learner could send next, in ${t}, each with its ${n} "translation" and its "romanization" (a Latin-letter reading if ${t} does not use Latin letters, otherwise null).`;
 }
 
 export function translatePrompt(from: AnyLang | "auto", to: AnyLang) {

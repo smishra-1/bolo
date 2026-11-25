@@ -116,6 +116,7 @@ create table public.learned_words (
   target_lang   text not null check (target_lang = any (public.supported_langs())),
   word          text not null check (char_length(word) between 1 and 80),
   meaning       text not null check (char_length(meaning) between 1 and 120),
+  romanization  text check (char_length(romanization) between 1 and 80),
   unit_id       text not null check (unit_id ~ '^[a-z_]{1,32}$'),
   first_seen_at timestamptz not null default now(),
   primary key (user_id, target_lang, word)
@@ -256,6 +257,7 @@ declare
   v_total     integer;
   v_word      jsonb;
   v_inserted  integer;
+  v_roman     text;
 begin
   if v_uid is null then
     raise exception 'not authenticated' using errcode = '42501';
@@ -302,10 +304,21 @@ begin
     if jsonb_typeof(v_word->'word') = 'string' and jsonb_typeof(v_word->'meaning') = 'string'
        and char_length(v_word->>'word') between 1 and 80
        and char_length(v_word->>'meaning') between 1 and 120 then
-      insert into public.learned_words (user_id, target_lang, word, meaning, unit_id)
-      values (v_uid, p_target_lang, v_word->>'word', v_word->>'meaning', p_unit_id)
+      v_roman := nullif(btrim(v_word->>'romanization'), '');
+      if v_roman is not null and char_length(v_roman) > 80 then
+        v_roman := null;
+      end if;
+      insert into public.learned_words (user_id, target_lang, word, meaning, romanization, unit_id)
+      values (v_uid, p_target_lang, v_word->>'word', v_word->>'meaning', v_roman, p_unit_id)
       on conflict do nothing;
       get diagnostics v_inserted = row_count;
+      -- Words learned before readings existed get theirs the next time they appear.
+      if v_inserted = 0 and v_roman is not null then
+        update public.learned_words
+           set romanization = v_roman
+         where user_id = v_uid and target_lang = p_target_lang
+           and word = v_word->>'word' and romanization is null;
+      end if;
       v_new_words := v_new_words + v_inserted;
     end if;
   end loop;
