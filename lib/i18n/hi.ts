@@ -263,7 +263,7 @@ export const hi: Messages = {
     sentencesTitle: "मेरे वाक्य परखो",
     wordsCount: "{n} शब्द सीखे",
     sentencesCount: "{n} वाक्य सीखे",
-    needWords: "यह परीक्षा खोलने के लिए कम से कम {n} शब्द सीखो।",
+    needWords: "यह परीक्षा खोलने के लिए किसी पाठ में एक शब्द सीखो।",
     needSentences: "यह परीक्षा खोलने के लिए किसी पाठ में एक वाक्य बनाओ।",
     start: "शुरू करो",
     resultTitle: "अभ्यास पूरा!",

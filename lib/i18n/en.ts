@@ -261,7 +261,7 @@ export const en = {
     sentencesTitle: "Test my sentences",
     wordsCount: "{n} words learned",
     sentencesCount: "{n} sentences learned",
-    needWords: "Learn at least {n} words to unlock this test.",
+    needWords: "Learn a word in a lesson to unlock this test.",
     needSentences: "Build a sentence in a lesson to unlock this test.",
     start: "Start",
     resultTitle: "Practice done!",

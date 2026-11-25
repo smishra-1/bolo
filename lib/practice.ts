@@ -6,9 +6,6 @@ export type LearnedWord = { word: string; meaning: string; romanization: string 
 /** Sentences a learner has built, as saved by complete_lesson. */
 export type LearnedSentence = LessonSentence;
 
-/** A word test needs this many words so every question has wrong answers to pick from. */
-export const MIN_WORDS_FOR_TEST = 4;
-
 const tokensSchema = z.array(z.object({ text: z.string(), romanization: z.string().nullable() }));
 
 /** Reads a sentence row, dropping it if its tokens are not usable. */
@@ -18,12 +15,14 @@ export function parseLearnedSentence(row: { sentence: string; meaning: string; t
   return { text: row.sentence, meaning: row.meaning, tokens: tokens.data as Token[] };
 }
 
-/** A varied test over words the learner has already met. */
+/**
+ * A varied test over words the learner has already met. Works from one word:
+ * the match game needs two, and questions offer as many wrong answers as there are.
+ */
 export function buildWordPractice(words: LearnedWord[], count = 6, random: () => number = Math.random): LessonStep[] {
   const pool: Vocab[] = words;
-  if (pool.length < MIN_WORDS_FOR_TEST) return [];
   const picks = shuffle(pool, random).slice(0, count);
-  const steps: LessonStep[] = [matchStep(picks.slice(0, 4), random)];
+  const steps: LessonStep[] = picks.length >= 2 ? [matchStep(picks.slice(0, 4), random)] : [];
   for (const [i, word] of picks.slice(4).entries()) steps.push(i % 2 === 0 ? choiceStep(word, pool, random) : listenStep(word, pool, random));
   // Top up so short tests still have a few questions.
   for (const [i, word] of picks.slice(0, 4).entries()) steps.push(i % 2 === 0 ? listenStep(word, pool, random) : choiceStep(word, pool, random));

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MIN_WORDS_FOR_TEST, buildSentencePractice, buildWordPractice, parseLearnedSentence, type LearnedSentence, type LearnedWord } from "@/lib/practice";
+import { buildSentencePractice, buildWordPractice, parseLearnedSentence, type LearnedSentence, type LearnedWord } from "@/lib/practice";
 
 const word = (w: string, meaning: string): LearnedWord => ({ word: w, meaning, romanization: null });
 const words = [word("gato", "cat"), word("perro", "dog"), word("agua", "water"), word("casa", "house"), word("libro", "book"), word("sol", "sun")];
@@ -10,9 +10,16 @@ const sentences: LearnedSentence[] = [
 ];
 
 describe("practice", () => {
-  it("needs a few words before it can test them", () => {
-    expect(buildWordPractice(words.slice(0, MIN_WORDS_FOR_TEST - 1))).toEqual([]);
-    expect(buildWordPractice(words.slice(0, MIN_WORDS_FOR_TEST)).length).toBeGreaterThan(0);
+  it("tests even one or two learned words", () => {
+    expect(buildWordPractice([])).toEqual([]);
+    const one = buildWordPractice(words.slice(0, 1));
+    expect(one.length).toBeGreaterThan(0);
+    expect(one.some((s) => s.type === "match")).toBe(false);
+    for (const step of one) {
+      if (step.type === "choice") expect(step.options).toEqual(["gato"]);
+      if (step.type === "listen") expect(step.options.map((o) => o.meaning)).toEqual(["cat"]);
+    }
+    expect(buildWordPractice(words.slice(0, 2))[0].type).toBe("match");
   });
 
   it("builds a varied word test with the right answer in every question", () => {

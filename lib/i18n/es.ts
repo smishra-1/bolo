@@ -263,7 +263,7 @@ export const es: Messages = {
     sentencesTitle: "Probar mis frases",
     wordsCount: "{n} palabras aprendidas",
     sentencesCount: "{n} frases aprendidas",
-    needWords: "Aprende al menos {n} palabras para abrir esta prueba.",
+    needWords: "Aprende una palabra en una lección para abrir esta prueba.",
     needSentences: "Construye una frase en una lección para abrir esta prueba.",
     start: "Empezar",
     resultTitle: "¡Práctica terminada!",

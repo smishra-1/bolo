@@ -6,7 +6,6 @@ import { starsFor } from "@/lib/progress";
 import type { TargetLang } from "@/lib/languages";
 import type { LessonStep } from "@/lib/lesson";
 import {
-  MIN_WORDS_FOR_TEST,
   buildSentencePractice,
   buildWordPractice,
   parseLearnedSentence,
@@ -114,7 +113,7 @@ function PracticeView({ target }: { target: TargetLang }) {
 
   const words = learned?.words ?? [];
   const sentences = learned?.sentences ?? [];
-  const canWords = words.length >= MIN_WORDS_FOR_TEST;
+  const canWords = words.length >= 1;
   const canSentences = sentences.length >= 1;
 
   return (
@@ -139,7 +138,7 @@ function PracticeView({ target }: { target: TargetLang }) {
                 <Button className="mt-auto w-full" disabled={!canWords} onClick={() => start(() => buildWordPractice(words))}>
                   {m.practice.start} →
                 </Button>
-                {!canWords && <p className="text-sm text-muted">{fmt(m.practice.needWords, { n: MIN_WORDS_FOR_TEST })}</p>}
+                {!canWords && <p className="text-sm text-muted">{m.practice.needWords}</p>}
               </Card>
             </li>
             <li>
